@@ -53,8 +53,13 @@ export default function OnboardingPage() {
   const handleComplete = async () => {
     try {
       await completeOnboarding(timezone, level, selectedDictId);
-    } catch (error) {
+      // Redirect will be handled by App.tsx after user state is updated
+    } catch (error: any) {
       console.error('Onboarding failed:', error);
+      // If already onboarded, just redirect to dashboard
+      if (error.detail === 'Already onboarded') {
+        window.location.hash = '#/dashboard';
+      }
     }
   };
 

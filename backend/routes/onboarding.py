@@ -16,7 +16,8 @@ async def complete_onboarding(
     db: AsyncSession = Depends(get_db),
 ):
     if user.is_onboarded:
-        raise HTTPException(status_code=400, detail="Already onboarded")
+        # Return success instead of error - makes API more resilient
+        return {"status": "already_onboarded"}
 
     # Get or create default dictionary for level
     from sqlalchemy import select

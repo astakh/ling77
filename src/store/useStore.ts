@@ -92,7 +92,20 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const response = await api.auth.register(email, password);
       localStorage.setItem('access_token', response.access_token);
-      set({ isAuthenticated: true, isLoading: false });
+      
+      // Load user info immediately after registration
+      const userInfo = await api.auth.me();
+      
+      set({ 
+        isAuthenticated: true,
+        isLoading: false,
+        user: {
+          id: String(userInfo.id),
+          email: userInfo.email,
+          timezone: userInfo.timezone,
+          isOnboarded: userInfo.is_onboarded,
+        }
+      });
     } catch (error: any) {
       set({ error: error.detail || 'Registration failed', isLoading: false });
       throw error;
@@ -104,7 +117,20 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const response = await api.auth.login(email, password);
       localStorage.setItem('access_token', response.access_token);
-      set({ isAuthenticated: true, isLoading: false });
+      
+      // Load user info immediately after login
+      const userInfo = await api.auth.me();
+      
+      set({ 
+        isAuthenticated: true,
+        isLoading: false,
+        user: {
+          id: String(userInfo.id),
+          email: userInfo.email,
+          timezone: userInfo.timezone,
+          isOnboarded: userInfo.is_onboarded,
+        }
+      });
       return true;
     } catch (error: any) {
       set({ error: error.detail || 'Login failed', isLoading: false });
