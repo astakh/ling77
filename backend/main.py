@@ -32,30 +32,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware - максимально открытая конфигурация
-@app.middleware("http")
-async def add_cors_headers(request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Max-Age"] = "3600"
-    return response
-
 # Middleware для логирования запросов
 @app.middleware("http")
 async def log_requests(request, call_next):
     logger.info(f"📨 {request.method} {request.url.path} from {request.client.host if request.client else 'unknown'}")
-    response = await call_next(request)
-    logger.info(f"📤 {request.method} {request.url.path} → {response.status_code}")
-    return response
-
-# Явный обработчик OPTIONS для всех путей
-@app.options("/{path:path}")
-async def options_handler(path: str):
-    logger.info(f"🔧 OPTIONS request for /{path}")
-    return {"status": "ok"}
+    try:
+        response = await call_next(request)
+        logger.info(f"📤 {request.method} {request.url.path} → {response.status_code}")
+        # Добавляем CORS заголовки ко всем ответам
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+    except Exception as e:
+        logger.error(f"❌ Error: {e}")
+        raise
 
 # Include routers
 app.include_router(auth.router)
