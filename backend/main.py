@@ -6,7 +6,6 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from routes import auth, onboarding, dashboard, lesson, vocabulary, admin, dictionaries
@@ -33,16 +32,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS - должен быть ДО всех роутов
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Временно разрешаем все origins для отладки
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=600,
-)
+# CORS middleware - максимально открытая конфигурация
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Max-Age"] = "3600"
+    return response
 
 # Middleware для логирования запросов
 @app.middleware("http")
@@ -53,10 +52,10 @@ async def log_requests(request, call_next):
     return response
 
 # Явный обработчик OPTIONS для всех путей
-@app.api_route("/{path:path}", methods=["OPTIONS"])
+@app.options("/{path:path}")
 async def options_handler(path: str):
     logger.info(f"🔧 OPTIONS request for /{path}")
-    return {}
+    return {"status": "ok"}
 
 # Include routers
 app.include_router(auth.router)

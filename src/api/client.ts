@@ -3,7 +3,7 @@
  * Handles JWT refresh, error handling, and request/response types.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8000';
 
 class ApiError extends Error {
   status: number;
@@ -27,7 +27,6 @@ function onRefreshed(token: string) {
 async function refreshToken(): Promise<string> {
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: 'POST',
-    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -58,10 +57,9 @@ async function request<T>(
   let response = await fetch(url, {
     ...options,
     headers,
-    credentials: 'include',
   });
 
-  console.log(`📥 API Response: ${response.status} ${response.statusText}`);
+  console.log(`📥 API Response: ${response.status} ${response.statusText} from ${url}`);
 
   // Handle 401 — try refresh
   if (response.status === 401 && token) {
@@ -78,7 +76,6 @@ async function request<T>(
         response = await fetch(url, {
           ...options,
           headers,
-          credentials: 'include',
         });
       } catch {
         isRefreshing = false;
@@ -130,7 +127,7 @@ export const api = {
       }),
 
     logout: () =>
-      request<{ status: string }>('/auth/logout', { method: 'POST' }),
+      request<{ status: string }>('/auth/logout', { method: 'POST', credentials: 'omit' }),
   },
 
   // Onboarding
