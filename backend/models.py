@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Index,
-    UniqueConstraint, Text, Float, func
+    UniqueConstraint, Text, Float, func, text
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
@@ -118,7 +118,7 @@ class Lesson(Base):
             "uq_lessons_in_progress",
             "learning_profile_id",
             unique=True,
-            postgresql_where=func.text_column("status") == "in_progress",
+            postgresql_where=text("status = 'in_progress'"),
         ),
     )
 
