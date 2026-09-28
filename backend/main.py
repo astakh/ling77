@@ -33,16 +33,30 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# CORS - должен быть ДО всех роутов
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=["*"],  # Временно разрешаем все origins для отладки
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=600,
 )
+
+# Middleware для логирования запросов
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(f"📨 {request.method} {request.url.path} from {request.client.host if request.client else 'unknown'}")
+    response = await call_next(request)
+    logger.info(f"📤 {request.method} {request.url.path} → {response.status_code}")
+    return response
+
+# Явный обработчик OPTIONS для всех путей
+@app.api_route("/{path:path}", methods=["OPTIONS"])
+async def options_handler(path: str):
+    logger.info(f"🔧 OPTIONS request for /{path}")
+    return {}
 
 # Include routers
 app.include_router(auth.router)

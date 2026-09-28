@@ -43,6 +43,7 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
   const token = localStorage.getItem('access_token');
 
   const headers: HeadersInit = {
@@ -59,6 +60,8 @@ async function request<T>(
     headers,
     credentials: 'include',
   });
+
+  console.log(`📥 API Response: ${response.status} ${response.statusText}`);
 
   // Handle 401 — try refresh
   if (response.status === 401 && token) {

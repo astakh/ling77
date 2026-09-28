@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import secrets
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
@@ -15,6 +16,8 @@ from auth import (
 )
 from config import settings
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -24,6 +27,7 @@ async def register(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    logger.info(f"📝 Register request received: {body.email}")
     # Rate limit
     client_ip = request.client.host if request.client else "unknown"
     if not auth_rate_limiter.is_allowed(f"register:{client_ip}"):
@@ -66,6 +70,7 @@ async def login(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    logger.info(f"🔑 Login request received: {body.email}")
     # Rate limit
     client_ip = request.client.host if request.client else "unknown"
     if not auth_rate_limiter.is_allowed(f"login:{client_ip}"):
