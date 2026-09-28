@@ -1,29 +1,52 @@
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, X, Play, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function LessonPreviewPage() {
   const navigate = useNavigate();
-  const { previewLesson, declineWord, startLesson, declinedWords, setDeclinedWords } = useStore();
-  const [refreshing, setRefreshing] = useState(false);
-  const preview = previewLesson();
+  const { previewLesson, declineWord, startLesson, declinedWords, setDeclinedWords, isLoading, error } = useStore();
+  const [preview, setPreview] = useState<{ words: { id: string; lemma: string; translations: string[]; isNew: boolean; isDue: boolean }[] } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPreview();
+  }, [declinedWords]);
+
+  const loadPreview = async () => {
+    setLoading(true);
+    try {
+      const data = await previewLesson();
+      setPreview(data);
+    } catch (error) {
+      console.error('Failed to load preview:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDecline = (wordId: string) => {
     declineWord(wordId);
   };
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 300);
+  const handleStart = async () => {
+    try {
+      await startLesson();
+      navigate('/lesson/exercise');
+    } catch (error) {
+      console.error('Failed to start lesson:', error);
+    }
   };
 
-  const handleStart = () => {
-    startLesson();
-    navigate('/lesson/exercise');
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
 
-  if (preview.words.length === 0) {
+  if (!preview || preview.words.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
         <div className="text-center">
@@ -54,15 +77,21 @@ export default function LessonPreviewPage() {
           </button>
           <h1 className="font-semibold text-gray-800">Состав урока</h1>
           <button
-            onClick={handleRefresh}
+            onClick={loadPreview}
             className="p-2 text-gray-500 hover:text-indigo-600 transition"
           >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto p-4">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-sm mb-4">
+            {error}
+          </div>
+        )}
+
         <p className="text-sm text-gray-500 mb-4">
           В этом уроке {preview.words.length} слов. Нажмите ✕ чтобы пропустить слово.
         </p>
@@ -108,10 +137,20 @@ export default function LessonPreviewPage() {
 
         <button
           onClick={handleStart}
-          className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-2xl hover:bg-indigo-700 transition flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 text-lg"
+          disabled={isLoading}
+          className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-2xl hover:bg-indigo-700 transition flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 text-lg disabled:opacity-50"
         >
-          <Play className="w-6 h-6" />
-          Начать урок
+          {isLoading ? (
+            <>
+              <RefreshCw className="w-6 h-6 animate-spin" />
+              Загрузка...
+            </>
+          ) : (
+            <>
+              <Play className="w-6 h-6" />
+              Начать урок
+            </>
+          )}
         </button>
       </div>
     </div>

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
-import { getWordById } from '../data/words';
-import { ArrowLeft, Search, Filter } from 'lucide-react';
+import { api } from '../api/client';
+import { ArrowLeft, Search, Filter, Loader2 } from 'lucide-react';
 import { WordStatus } from '../types';
 
 const STATUS_LABELS: Record<WordStatus, string> = {
@@ -17,50 +17,53 @@ const STATUS_COLORS: Record<WordStatus, string> = {
   ignored: 'bg-gray-100 text-gray-500',
 };
 
+interface VocabWord {
+  id: number;
+  word_id: number;
+  lemma: string;
+  pos: string;
+  translations: string[];
+  status: WordStatus;
+  stage: number;
+  due_lesson_number: number | null;
+}
+
 export default function VocabularyPage() {
   const navigate = useNavigate();
-  const { profile, updateWordStatus } = useStore();
+  const { updateWordStatus } = useStore();
+  const [words, setWords] = useState<VocabWord[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | WordStatus>('all');
-  const [showFilter, setShowFilter] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  if (!profile) {
-    navigate('/dashboard');
-    return null;
-  }
+  useEffect(() => {
+    loadVocabulary();
+  }, [filter, search, page]);
 
-  const filteredWords = profile.userWords
-    .map((uw, idx) => ({ ...uw, index: idx }))
-    .filter(uw => {
-      if (filter !== 'all' && uw.status !== filter) return false;
-      if (search) {
-        const word = getWordById(uw.wordId);
-        if (!word) return false;
-        const searchLower = search.toLowerCase();
-        return (
-          word.lemma.toLowerCase().includes(searchLower) ||
-          word.translations.some(t => t.toLowerCase().includes(searchLower))
-        );
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      // Sort: active first, then by stage
-      if (a.status === 'active' && b.status !== 'active') return -1;
-      if (a.status !== 'active' && b.status === 'active') return 1;
-      return a.stage - b.stage;
-    });
-
-  const cycleStatus = (index: number, currentStatus: WordStatus) => {
-    const nextStatus: WordStatus = currentStatus === 'active' ? 'mastered' : currentStatus === 'mastered' ? 'ignored' : 'active';
-    updateWordStatus(index, nextStatus);
+  const loadVocabulary = async () => {
+    setLoading(true);
+    try {
+      const response = await api.vocabulary.list(page, 20, filter === 'all' ? undefined : filter, search || undefined);
+      setWords(response.words);
+      setTotal(response.total);
+    } catch (error) {
+      console.error('Failed to load vocabulary:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const counts = {
-    all: profile.userWords.length,
-    active: profile.userWords.filter(uw => uw.status === 'active').length,
-    mastered: profile.userWords.filter(uw => uw.status === 'mastered').length,
-    ignored: profile.userWords.filter(uw => uw.status === 'ignored').length,
+  const cycleStatus = async (userWordId: number, currentStatus: WordStatus) => {
+    const nextStatus: WordStatus = currentStatus === 'active' ? 'mastered' : currentStatus === 'mastered' ? 'ignored' : 'active';
+    try {
+      await updateWordStatus(userWordId, nextStatus);
+      // Reload vocabulary
+      await loadVocabulary();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
   };
 
   return (
@@ -94,50 +97,45 @@ export default function VocabularyPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
-          <button
-            onClick={() => setShowFilter(!showFilter)}
-            className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
-          >
-            <Filter className="w-4 h-4" />
-            Фильтр
-          </button>
           {(['all', 'active', 'mastered', 'ignored'] as const).map(f => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => { setFilter(f); setPage(1); }}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
                 filter === f ? 'bg-indigo-100 text-indigo-700' : 'bg-white text-gray-500 border border-gray-200'
               }`}
             >
-              {f === 'all' ? 'Все' : STATUS_LABELS[f]} ({counts[f]})
+              {f === 'all' ? 'Все' : STATUS_LABELS[f]}
             </button>
           ))}
         </div>
 
         {/* Word list */}
-        {filteredWords.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          </div>
+        ) : words.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-4xl mb-4">📖</div>
             <p className="text-gray-500">
-              {profile.userWords.length === 0
+              {total === 0
                 ? 'Словарь пуст. Начните уроки, чтобы добавить слова!'
                 : 'Ничего не найдено'}
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredWords.map(uw => {
-              const word = getWordById(uw.wordId);
-              if (!word) return null;
-              return (
-                <div key={uw.wordId} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <>
+            <div className="space-y-2">
+              {words.map(word => (
+                <div key={word.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-gray-800">{word.lemma}</span>
                         <span className="text-xs text-gray-400">{word.pos}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[uw.status]}`}>
-                          {STATUS_LABELS[uw.status]}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[word.status]}`}>
+                          {STATUS_LABELS[word.status]}
                         </span>
                       </div>
                       <div className="text-sm text-gray-500 mt-1">
@@ -151,30 +149,53 @@ export default function VocabularyPage() {
                               <div
                                 key={s}
                                 className={`w-2 h-2 rounded-full ${
-                                  s <= uw.stage ? 'bg-indigo-500' : 'bg-gray-200'
+                                  s <= word.stage ? 'bg-indigo-500' : 'bg-gray-200'
                                 }`}
                               />
                             ))}
                           </div>
                         </div>
-                        {uw.dueLessonNumber !== null && (
+                        {word.due_lesson_number !== null && (
                           <span className="text-xs text-gray-400">
-                            Повтор: урок #{uw.dueLessonNumber}
+                            Повтор: урок #{word.due_lesson_number}
                           </span>
                         )}
                       </div>
                     </div>
                     <button
-                      onClick={() => cycleStatus(uw.index, uw.status)}
+                      onClick={() => cycleStatus(word.id, word.status)}
                       className="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
                     >
                       Сменить
                     </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {total > 20 && (
+              <div className="flex justify-center gap-2 mt-6">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm disabled:opacity-50"
+                >
+                  Назад
+                </button>
+                <span className="px-4 py-2 text-sm text-gray-600">
+                  Страница {page} из {Math.ceil(total / 20)}
+                </span>
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page >= Math.ceil(total / 20)}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm disabled:opacity-50"
+                >
+                  Вперёд
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

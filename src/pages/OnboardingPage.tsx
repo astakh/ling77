@@ -13,10 +13,14 @@ const LEVELS: { value: Level; label: string; description: string }[] = [
 export default function OnboardingPage() {
   const [level, setLevel] = useState<Level>('A1');
   const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow');
-  const { completeOnboarding } = useStore();
+  const { completeOnboarding, isLoading } = useStore();
 
-  const handleComplete = () => {
-    completeOnboarding(timezone, level);
+  const handleComplete = async () => {
+    try {
+      await completeOnboarding(timezone, level);
+    } catch (error) {
+      console.error('Onboarding failed:', error);
+    }
   };
 
   return (
@@ -55,10 +59,20 @@ export default function OnboardingPage() {
 
           <button
             onClick={handleComplete}
-            className="w-full py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+            disabled={isLoading}
+            className="w-full py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-50"
           >
-            Начать обучение
-            <ArrowRight className="w-5 h-5" />
+            {isLoading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Загрузка...
+              </>
+            ) : (
+              <>
+                Начать обучение
+                <ArrowRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         </div>
       </div>

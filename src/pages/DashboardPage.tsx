@@ -1,13 +1,32 @@
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { Flame, BookOpen, Brain, Target, Play, Clock, LogOut, List, Library } from 'lucide-react';
+import { DashboardSummary } from '../types';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { getDashboardSummary, user, logout, profile } = useStore();
-  const summary = getDashboardSummary();
+  const { logout } = useStore();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const loadDashboard = async () => {
+    try {
+      const data = await useStore.getState().getDashboardSummary();
+      setSummary(data);
+    } catch (error) {
+      console.error('Failed to load dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCTA = () => {
+    if (!summary) return;
     if (summary.cta === 'resume' && summary.currentLessonId) {
       navigate('/lesson/exercise');
     } else if (summary.cta === 'start') {
@@ -15,9 +34,25 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (!summary) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-red-500">Ошибка загрузки</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -26,7 +61,6 @@ export default function DashboardPage() {
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-gray-900">WordFlow</h1>
-            <p className="text-xs text-gray-500">{user?.email}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -97,7 +131,7 @@ export default function DashboardPage() {
               <span className="text-xs text-gray-500">Сегодня</span>
             </div>
             <div className="text-2xl font-bold text-gray-800">
-              {summary.lessonsToday}/{profile?.dailyLessonLimit || 5}
+              {summary.lessonsToday}/5
             </div>
           </div>
         </div>
@@ -118,27 +152,6 @@ export default function DashboardPage() {
             {summary.cta === 'resume' ? 'Продолжить урок' : 'Начать урок'}
           </button>
         )}
-
-        {/* Progress info */}
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
-          <h3 className="font-medium text-gray-700 mb-3">Прогресс</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Всего слов в словаре</span>
-              <span className="font-medium text-gray-700">{summary.totalWords}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Уровень</span>
-              <span className="font-medium text-gray-700">{profile?.level}</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-2 mt-3">
-              <div
-                className="bg-indigo-500 h-2 rounded-full transition-all"
-                style={{ width: `${Math.min((summary.masteredWords / Math.max(summary.totalWords, 1)) * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

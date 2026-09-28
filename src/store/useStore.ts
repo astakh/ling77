@@ -1,13 +1,6 @@
 import { create } from 'zustand';
 import { User, LearningProfile, Lesson, Exercise, ExerciseWord, DashboardSummary, Level, WordStatus } from '../types';
-import { dictionary, getWordById } from '../data/words';
-import { getSentenceForWord } from '../data/sentences';
-import { calculateNewStage, calculateDueLessonNumber, isDue, isMastered } from '../utils/srs';
-import {
-  saveUser, loadUser, saveProfile, loadProfile,
-  saveLessons, loadLessons, saveStreak, loadStreak,
-  saveAuth, loadAuth, clearAll, getLocalDate, getLessonsToday
-} from '../utils/storage';
+import { api } from '../api/client';
 
 interface AppState {
   // Auth
@@ -26,45 +19,32 @@ interface AppState {
   // Draft
   exerciseDraft: string;
 
+  // Declined words
+  declinedWords: string[];
+
+  // Loading
+  isLoading: boolean;
+  error: string | null;
+
   // Actions
-  initialize: () => void;
-  register: (email: string, password: string) => void;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
-  completeOnboarding: (timezone: string, level: Level) => void;
-  getDashboardSummary: () => DashboardSummary;
-  startLesson: () => Lesson;
-  previewLesson: () => { words: { id: string; lemma: string; translations: string[]; isNew: boolean; isDue: boolean }[] };
+  initialize: () => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  completeOnboarding: (timezone: string, level: Level) => Promise<void>;
+  getDashboardSummary: () => Promise<DashboardSummary>;
+  startLesson: () => Promise<Lesson>;
+  previewLesson: () => Promise<{ words: { id: string; lemma: string; translations: string[]; isNew: boolean; isDue: boolean }[] }>;
   declineWord: (wordId: string) => void;
   submitExerciseTranslation: (translation: string) => void;
-  evaluateExercise: (result: 'correct' | 'typo' | 'incorrect' | 'dont_know') => void;
+  evaluateExercise: (exerciseId: number, translation: string) => Promise<{ result: string; words: any[]; isLast: boolean; referenceTranslation: string }>;
   nextExercise: () => void;
-  completeLesson: () => void;
-  abandonLesson: () => void;
+  completeLesson: () => Promise<void>;
+  abandonLesson: () => Promise<void>;
   setExerciseDraft: (draft: string) => void;
-  updateWordStatus: (userWordIndex: number, status: WordStatus) => void;
-  getDeclinedWords: () => string[];
+  updateWordStatus: (userWordId: number, status: WordStatus) => Promise<void>;
   setDeclinedWords: (words: string[]) => void;
-  declinedWords: string[];
-}
-
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-}
-
-function deterministicShuffle<T>(items: T[], seed: string): T[] {
-  const arr = [...items];
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-    hash |= 0;
-  }
-  for (let i = arr.length - 1; i > 0; i--) {
-    hash = (hash * 1103515245 + 12345) & 0x7fffffff;
-    const j = hash % (i + 1);
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+  clearError: () => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -77,50 +57,63 @@ export const useStore = create<AppState>((set, get) => ({
   streak: { count: 0, lastDate: '' },
   exerciseDraft: '',
   declinedWords: [],
+  isLoading: false,
+  error: null,
 
-  initialize: () => {
-    const isAuth = loadAuth();
-    const user = loadUser();
-    const profile = loadProfile();
-    const lessons = loadLessons();
-    const streak = loadStreak();
-
-    set({
-      isAuthenticated: isAuth,
-      user,
-      profile,
-      lessons,
-      streak,
-    });
-  },
-
-  register: (email: string, _password: string) => {
-    const user: User = {
-      id: generateId(),
-      email: email.toLowerCase(),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow',
-      isOnboarded: false,
-    };
-    saveUser(user);
-    saveAuth(true);
-    set({ isAuthenticated: true, user });
-  },
-
-  login: (email: string, _password: string) => {
-    const user = loadUser();
-    if (user && user.email === email.toLowerCase()) {
-      saveAuth(true);
-      const profile = loadProfile();
-      const lessons = loadLessons();
-      const streak = loadStreak();
-      set({ isAuthenticated: true, user, profile, lessons, streak });
-      return true;
+  initialize: async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      set({ isAuthenticated: false });
+      return;
     }
-    return false;
+
+    try {
+      // Try to get dashboard summary to check if user is authenticated and onboarded
+      const summary = await api.dashboard.summary();
+      set({ isAuthenticated: true });
+      
+      // If we got here, user is authenticated
+      // We'll load full user data on demand
+    } catch (error: any) {
+      if (error.status === 401) {
+        localStorage.removeItem('access_token');
+        set({ isAuthenticated: false });
+      }
+    }
   },
 
-  logout: () => {
-    clearAll();
+  register: async (email: string, password: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.auth.register(email, password);
+      localStorage.setItem('access_token', response.access_token);
+      set({ isAuthenticated: true, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.detail || 'Registration failed', isLoading: false });
+      throw error;
+    }
+  },
+
+  login: async (email: string, password: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.auth.login(email, password);
+      localStorage.setItem('access_token', response.access_token);
+      set({ isAuthenticated: true, isLoading: false });
+      return true;
+    } catch (error: any) {
+      set({ error: error.detail || 'Login failed', isLoading: false });
+      return false;
+    }
+  },
+
+  logout: async () => {
+    try {
+      await api.auth.logout();
+    } catch (e) {
+      // Ignore logout errors
+    }
+    localStorage.removeItem('access_token');
     set({
       isAuthenticated: false,
       user: null,
@@ -129,297 +122,136 @@ export const useStore = create<AppState>((set, get) => ({
       currentLesson: null,
       currentExerciseIndex: 0,
       streak: { count: 0, lastDate: '' },
+      declinedWords: [],
     });
   },
 
-  completeOnboarding: (timezone: string, level: Level) => {
-    const { user } = get();
-    if (!user) return;
-
-    const updatedUser: User = { ...user, timezone, isOnboarded: true };
-    const profile: LearningProfile = {
-      userId: user.id,
-      level,
-      dictionaryId: null,
-      dailyLessonLimit: 5,
-      lastLessonNumber: 0,
-      userWords: [],
-    };
-
-    saveUser(updatedUser);
-    saveProfile(profile);
-
-    set({ user: updatedUser, profile });
-  },
-
-  getDashboardSummary: () => {
-    const { profile, lessons, streak } = get();
-    if (!profile) {
-      return { cta: 'start' as const, streak: 0, totalLessons: 0, totalWords: 0, masteredWords: 0, dueWords: 0, lessonsToday: 0, currentLessonId: null };
+  completeOnboarding: async (timezone: string, level: Level) => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.onboarding.complete(timezone, level);
+      set({ isLoading: false });
+    } catch (error: any) {
+      set({ error: error.detail || 'Onboarding failed', isLoading: false });
+      throw error;
     }
+  },
 
-    const today = getLocalDate();
-    const lessonsToday = getLessonsToday(lessons);
-    const inProgress = lessons.find(l => l.status === 'in_progress');
-
-    const totalWords = profile.userWords.length;
-    const masteredWords = profile.userWords.filter(uw => isMastered(uw.stage)).length;
-    const dueWords = profile.userWords.filter(uw => isDue(uw.stage, uw.dueLessonNumber, profile.lastLessonNumber)).length;
-
-    let cta: 'start' | 'resume' | 'limit_reached';
-    if (inProgress) {
-      cta = 'resume';
-    } else if (lessonsToday >= profile.dailyLessonLimit) {
-      cta = 'limit_reached';
-    } else {
-      cta = 'start';
+  getDashboardSummary: async () => {
+    try {
+      const summary = await api.dashboard.summary();
+      const result: DashboardSummary = {
+        cta: summary.cta,
+        streak: summary.streak,
+        totalLessons: summary.total_lessons,
+        totalWords: summary.total_words,
+        masteredWords: summary.mastered_words,
+        dueWords: summary.due_words,
+        lessonsToday: summary.lessons_today,
+        currentLessonId: summary.current_lesson_id ? String(summary.current_lesson_id) : null,
+      };
+      return result;
+    } catch (error: any) {
+      set({ error: error.detail || 'Failed to load dashboard' });
+      throw error;
     }
-
-    return {
-      cta,
-      streak: streak.count,
-      totalLessons: lessons.filter(l => l.status === 'completed').length,
-      totalWords,
-      masteredWords,
-      dueWords,
-      lessonsToday,
-      currentLessonId: inProgress?.id || null,
-    };
   },
 
-  previewLesson: () => {
-    const { profile, declinedWords } = get();
-    if (!profile) return { words: [] };
-
-    const nextLessonNumber = profile.lastLessonNumber + 1;
-    const seed = `${profile.userId}:${nextLessonNumber}`;
-
-    // Get due words
-    const dueWords = profile.userWords.filter(uw =>
-      isDue(uw.stage, uw.dueLessonNumber, profile.lastLessonNumber) && !declinedWords.includes(uw.wordId)
-    );
-
-    // Get new words (not yet in userWords)
-    const existingWordIds = new Set(profile.userWords.map(uw => uw.wordId));
-    const availableNewWords = dictionary
-      .filter(w => w.level === profile.level || (profile.level === 'A2' && w.level === 'A1') || (profile.level === 'B1' && (w.level === 'A1' || w.level === 'A2')) || (profile.level === 'B2' && (w.level === 'A1' || w.level === 'A2' || w.level === 'B1')))
-      .filter(w => !existingWordIds.has(w.id))
-      .filter(w => !declinedWords.includes(w.id));
-
-    const shuffledDue = deterministicShuffle(dueWords, seed + ':due');
-    const shuffledNew = deterministicShuffle(availableNewWords, seed + ':new');
-
-    // Pick up to 5 due words and fill remaining with new words (up to 8 total)
-    const selectedDue = shuffledDue.slice(0, 5);
-    const remaining = 8 - selectedDue.length;
-    const selectedNew = shuffledNew.slice(0, Math.max(remaining, 3));
-
-    const words = [
-      ...selectedDue.map(uw => {
-        const word = getWordById(uw.wordId)!;
-        return { id: word.id, lemma: word.lemma, translations: word.translations, isNew: false, isDue: true };
-      }),
-      ...selectedNew.map(w => ({ id: w.id, lemma: w.lemma, translations: w.translations, isNew: true, isDue: false })),
-    ];
-
-    return { words };
+  previewLesson: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.lesson.preview();
+      set({ isLoading: false });
+      return {
+        words: response.words.map(w => ({
+          id: String(w.id),
+          lemma: w.lemma,
+          translations: w.translations,
+          isNew: w.is_new,
+          isDue: w.is_due,
+        })),
+      };
+    } catch (error: any) {
+      set({ error: error.detail || 'Failed to preview lesson', isLoading: false });
+      throw error;
+    }
   },
-
-  getDeclinedWords: () => get().declinedWords,
-  setDeclinedWords: (words: string[]) => set({ declinedWords: words }),
 
   declineWord: (wordId: string) => {
     const { declinedWords } = get();
     set({ declinedWords: [...declinedWords, wordId] });
   },
 
-  startLesson: () => {
-    const { profile, lessons, declinedWords } = get();
-    if (!profile) throw new Error('No profile');
+  setDeclinedWords: (words: string[]) => {
+    set({ declinedWords: words });
+  },
 
-    const nextLessonNumber = profile.lastLessonNumber + 1;
-    const seed = `${profile.userId}:${nextLessonNumber}`;
+  startLesson: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.lesson.start();
+      
+      // Convert API response to Lesson type
+      const lesson: Lesson = {
+        id: String(response.lesson_id),
+        lessonNumber: response.lesson_number,
+        status: 'in_progress',
+        startedLocalDate: new Date().toISOString().split('T')[0],
+        completedLocalDate: null,
+        exercises: response.exercises.map((ex: any) => ({
+          id: String(ex.id),
+          orderIndex: ex.order_index,
+          targetSentence: ex.target_sentence,
+          referenceTranslation: ex.reference_translation,
+          userTranslation: '',
+          status: ex.status,
+          words: ex.words.map((w: any) => ({
+            wordId: String(w.word_id),
+            isTarget: w.is_target,
+            isNew: w.is_new,
+            surfaceForm: w.surface_form,
+            result: 'pending',
+            userFragment: '',
+            stageBefore: w.stage_before,
+            stageAfter: w.stage_after,
+          })),
+        })),
+      };
 
-    // Get due words
-    const dueWords = profile.userWords.filter(uw =>
-      isDue(uw.stage, uw.dueLessonNumber, profile.lastLessonNumber) && !declinedWords.includes(uw.wordId)
-    );
-
-    // Get new words
-    const existingWordIds = new Set(profile.userWords.map(uw => uw.wordId));
-    const availableNewWords = dictionary
-      .filter(w => w.level === profile.level || (profile.level === 'A2' && w.level === 'A1') || (profile.level === 'B1' && (w.level === 'A1' || w.level === 'A2')) || (profile.level === 'B2' && (w.level === 'A1' || w.level === 'A2' || w.level === 'B1')))
-      .filter(w => !existingWordIds.has(w.id))
-      .filter(w => !declinedWords.includes(w.id));
-
-    const shuffledDue = deterministicShuffle(dueWords, seed + ':due');
-    const shuffledNew = deterministicShuffle(availableNewWords, seed + ':new');
-
-    const selectedDue = shuffledDue.slice(0, 5);
-    const remaining = 8 - selectedDue.length;
-    const selectedNew = shuffledNew.slice(0, Math.max(remaining, 3));
-
-    // Create exercises - group words into clusters of 2-3
-    const allWords = [
-      ...selectedDue.map(uw => ({ wordId: uw.wordId, isNew: false, stage: uw.stage })),
-      ...selectedNew.map(w => ({ wordId: w.id, isNew: true, stage: 0 })),
-    ];
-
-    // Group into clusters of 2-3
-    const clusters: typeof allWords[] = [];
-    let i = 0;
-    while (i < allWords.length) {
-      const clusterSize = Math.min(2 + Math.floor(Math.random() * 2), allWords.length - i);
-      clusters.push(allWords.slice(i, i + clusterSize));
-      i += clusterSize;
-    }
-
-    const exercises: Exercise[] = clusters.map((cluster, idx) => {
-      // Generate a sentence that uses the target words
-      const targetWord = getWordById(cluster[0].wordId)!;
-      const template = getSentenceForWord(targetWord);
-
-      const exerciseWords: ExerciseWord[] = cluster.map(cw => {
-        const word = getWordById(cw.wordId)!;
-        return {
-          wordId: cw.wordId,
-          isTarget: true,
-          isNew: cw.isNew,
-          surfaceForm: word.lemma,
-          result: 'pending' as const,
-          userFragment: '',
-          stageBefore: cw.stage,
-          stageAfter: cw.stage,
-        };
+      set({
+        currentLesson: lesson,
+        currentExerciseIndex: 0,
+        declinedWords: [],
+        exerciseDraft: '',
+        isLoading: false,
       });
 
-      return {
-        id: generateId(),
-        orderIndex: idx,
-        targetSentence: template.sentence,
-        referenceTranslation: template.translation,
-        userTranslation: '',
-        status: 'pending' as const,
-        words: exerciseWords,
-      };
-    });
-
-    const lesson: Lesson = {
-      id: generateId(),
-      lessonNumber: nextLessonNumber,
-      status: 'in_progress',
-      startedLocalDate: getLocalDate(),
-      completedLocalDate: null,
-      exercises,
-    };
-
-    const updatedLessons = [...lessons, lesson];
-    const updatedProfile: LearningProfile = {
-      ...profile,
-      lastLessonNumber: nextLessonNumber,
-    };
-
-    saveLessons(updatedLessons);
-    saveProfile(updatedProfile);
-
-    // Reset declined words
-    set({
-      lessons: updatedLessons,
-      profile: updatedProfile,
-      currentLesson: lesson,
-      currentExerciseIndex: 0,
-      declinedWords: [],
-      exerciseDraft: '',
-    });
-
-    return lesson;
+      return lesson;
+    } catch (error: any) {
+      set({ error: error.detail || 'Failed to start lesson', isLoading: false });
+      throw error;
+    }
   },
 
   submitExerciseTranslation: (translation: string) => {
-    const { currentLesson, currentExerciseIndex } = get();
-    if (!currentLesson) return;
-
-    const updatedExercises = [...currentLesson.exercises];
-    updatedExercises[currentExerciseIndex] = {
-      ...updatedExercises[currentExerciseIndex],
-      userTranslation: translation,
-    };
-
-    set({
-      currentLesson: { ...currentLesson, exercises: updatedExercises },
-      exerciseDraft: translation,
-    });
+    set({ exerciseDraft: translation });
   },
 
-  evaluateExercise: (result: 'correct' | 'typo' | 'incorrect' | 'dont_know') => {
-    const { currentLesson, currentExerciseIndex, profile, lessons } = get();
-    if (!currentLesson || !profile) return;
-
-    const exercise = currentLesson.exercises[currentExerciseIndex];
-    const updatedWords: ExerciseWord[] = exercise.words.map(ew => {
-      if (!ew.isTarget) return ew;
-
-      const newStage = result === 'dont_know'
-        ? calculateNewStage(ew.stageBefore, 'incorrect')
-        : calculateNewStage(ew.stageBefore, result);
-
+  evaluateExercise: async (exerciseId: number, translation: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.lesson.evaluate(exerciseId, translation);
+      set({ isLoading: false });
       return {
-        ...ew,
-        result,
-        stageAfter: newStage,
-        userFragment: ew.surfaceForm,
+        result: response.result,
+        words: response.words,
+        isLast: response.is_last,
+        referenceTranslation: response.reference_translation,
       };
-    });
-
-    const updatedExercise: Exercise = {
-      ...exercise,
-      status: 'evaluated',
-      words: updatedWords,
-    };
-
-    const updatedExercises = [...currentLesson.exercises];
-    updatedExercises[currentExerciseIndex] = updatedExercise;
-
-    const updatedLesson: Lesson = {
-      ...currentLesson,
-      exercises: updatedExercises,
-    };
-
-    // Update user words in profile
-    const updatedUserWords = [...profile.userWords];
-    updatedWords.forEach(ew => {
-      if (!ew.isTarget) return;
-      const existingIdx = updatedUserWords.findIndex(uw => uw.wordId === ew.wordId);
-      const newDueLesson = calculateDueLessonNumber(currentLesson.lessonNumber, ew.stageAfter);
-
-      if (existingIdx >= 0) {
-        updatedUserWords[existingIdx] = {
-          ...updatedUserWords[existingIdx],
-          stage: ew.stageAfter,
-          dueLessonNumber: newDueLesson,
-          status: isMastered(ew.stageAfter) ? 'mastered' : 'active',
-        };
-      } else {
-        updatedUserWords.push({
-          wordId: ew.wordId,
-          status: isMastered(ew.stageAfter) ? 'mastered' : 'active',
-          stage: ew.stageAfter,
-          dueLessonNumber: newDueLesson,
-        });
-      }
-    });
-
-    const updatedProfile: LearningProfile = { ...profile, userWords: updatedUserWords };
-    const updatedLessons = lessons.map(l => l.id === updatedLesson.id ? updatedLesson : l);
-
-    saveProfile(updatedProfile);
-    saveLessons(updatedLessons);
-
-    set({
-      currentLesson: updatedLesson,
-      profile: updatedProfile,
-      lessons: updatedLessons,
-    });
+    } catch (error: any) {
+      set({ error: error.detail || 'Failed to evaluate exercise', isLoading: false });
+      throw error;
+    }
   },
 
   nextExercise: () => {
@@ -431,78 +263,45 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  completeLesson: () => {
-    const { currentLesson, lessons, streak } = get();
-    if (!currentLesson) return;
-
-    const today = getLocalDate();
-    const completedLesson: Lesson = {
-      ...currentLesson,
-      status: 'completed',
-      completedLocalDate: today,
-    };
-
-    const updatedLessons = lessons.map(l => l.id === completedLesson.id ? completedLesson : l);
-
-    // Update streak
-    let newStreak = { ...streak };
-    if (streak.lastDate === today) {
-      // Already counted today
-    } else {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-      if (streak.lastDate === yesterdayStr) {
-        newStreak = { count: streak.count + 1, lastDate: today };
-      } else {
-        newStreak = { count: 1, lastDate: today };
-      }
-    }
-
-    saveLessons(updatedLessons);
-    saveStreak(newStreak);
-
-    set({
-      lessons: updatedLessons,
-      currentLesson: completedLesson,
-      streak: newStreak,
-    });
+  completeLesson: async () => {
+    // Lesson is auto-completed by backend when last exercise is evaluated
+    set({ currentLesson: null, currentExerciseIndex: 0 });
   },
 
-  abandonLesson: () => {
-    const { currentLesson, lessons } = get();
+  abandonLesson: async () => {
+    const { currentLesson } = get();
     if (!currentLesson) return;
 
-    const abandonedLesson: Lesson = {
-      ...currentLesson,
-      status: 'abandoned',
-    };
-
-    const updatedLessons = lessons.map(l => l.id === abandonedLesson.id ? abandonedLesson : l);
-    saveLessons(updatedLessons);
-
-    set({
-      lessons: updatedLessons,
-      currentLesson: null,
-      currentExerciseIndex: 0,
-    });
+    set({ isLoading: true, error: null });
+    try {
+      await api.lesson.abandon(parseInt(currentLesson.id));
+      set({
+        currentLesson: null,
+        currentExerciseIndex: 0,
+        isLoading: false,
+      });
+    } catch (error: any) {
+      set({ error: error.detail || 'Failed to abandon lesson', isLoading: false });
+      throw error;
+    }
   },
 
   setExerciseDraft: (draft: string) => {
     set({ exerciseDraft: draft });
-    localStorage.setItem('lw_exercise_draft', draft);
   },
 
-  updateWordStatus: (userWordIndex: number, status: WordStatus) => {
-    const { profile } = get();
-    if (!profile) return;
+  updateWordStatus: async (userWordId: number, status: WordStatus) => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.vocabulary.updateStatus(userWordId, status);
+      set({ isLoading: false });
+    } catch (error: any) {
+      set({ error: error.detail || 'Failed to update word status', isLoading: false });
+      throw error;
+    }
+  },
 
-    const updatedUserWords = [...profile.userWords];
-    updatedUserWords[userWordIndex] = { ...updatedUserWords[userWordIndex], status };
-
-    const updatedProfile = { ...profile, userWords: updatedUserWords };
-    saveProfile(updatedProfile);
-    set({ profile: updatedProfile });
+  clearError: () => {
+    set({ error: null });
   },
 }));

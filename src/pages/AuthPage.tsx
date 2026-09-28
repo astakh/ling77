@@ -7,9 +7,9 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { register, login } = useStore();
+  const { register, login, isLoading } = useStore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -18,17 +18,21 @@ export default function AuthPage() {
       return;
     }
 
-    if (isLogin) {
-      const success = login(email, password);
-      if (!success) {
-        setError('Пользователь не найден. Зарегистрируйтесь.');
+    try {
+      if (isLogin) {
+        const success = await login(email, password);
+        if (!success) {
+          setError('Неверный email или пароль');
+        }
+      } else {
+        if (password.length < 6) {
+          setError('Пароль должен быть не менее 6 символов');
+          return;
+        }
+        await register(email, password);
       }
-    } else {
-      if (password.length < 6) {
-        setError('Пароль должен быть не менее 6 символов');
-        return;
-      }
-      register(email, password);
+    } catch (err: any) {
+      setError(err.detail || 'Ошибка. Попробуйте ещё раз.');
     }
   };
 
@@ -87,10 +91,20 @@ export default function AuthPage() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+              disabled={isLoading}
+              className="w-full py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-50"
             >
-              {isLogin ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
-              {isLogin ? 'Войти' : 'Создать аккаунт'}
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Загрузка...
+                </>
+              ) : (
+                <>
+                  {isLogin ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+                  {isLogin ? 'Войти' : 'Создать аккаунт'}
+                </>
+              )}
             </button>
           </form>
 

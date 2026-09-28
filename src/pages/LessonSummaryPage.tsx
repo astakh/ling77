@@ -1,6 +1,5 @@
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
-import { getWordById } from '../data/words';
 import { Trophy, ArrowRight, Flame, Star } from 'lucide-react';
 
 export default function LessonSummaryPage() {
@@ -91,32 +90,6 @@ export default function LessonSummaryPage() {
               </div>
               <span className="font-medium text-gray-800">{incorrectCount}</span>
             </div>
-          </div>
-        </div>
-
-        {/* Words summary */}
-        <div className="w-full bg-white rounded-xl p-4 border border-gray-100 mb-8">
-          <h3 className="font-medium text-gray-700 mb-3">Слова в уроке</h3>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {allWords.map((ew, i) => {
-              const word = getWordById(ew.wordId);
-              if (!word) return null;
-              return (
-                <div key={i} className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${
-                      ew.result === 'correct' ? 'bg-green-500' :
-                      ew.result === 'typo' ? 'bg-amber-500' : 'bg-red-500'
-                    }`} />
-                    <span className="text-sm font-medium text-gray-700">{word.lemma}</span>
-                    <span className="text-xs text-gray-400">{word.translations[0]}</span>
-                  </div>
-                  <span className="text-xs text-gray-400">
-                    {ew.stageBefore}→{ew.stageAfter}
-                  </span>
-                </div>
-              );
-            })}
           </div>
         </div>
 

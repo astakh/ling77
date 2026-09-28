@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useStore } from './store/useStore';
 import AuthPage from './pages/AuthPage';
@@ -11,66 +11,45 @@ import VocabularyPage from './pages/VocabularyPage';
 import DictionariesPage from './pages/DictionariesPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useStore();
+  const { isAuthenticated } = useStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
-  }
-
-  if (user && !user.isOnboarded) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function OnboardingGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useStore();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (user?.isOnboarded) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-}
-
-function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useStore();
-
-  if (isAuthenticated && user?.isOnboarded) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (isAuthenticated && user && !user.isOnboarded) {
-    return <Navigate to="/onboarding" replace />;
   }
 
   return <>{children}</>;
 }
 
 function App() {
-  const { initialize } = useStore();
+  const { initialize, isAuthenticated } = useStore();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    initialize();
+    const init = async () => {
+      await initialize();
+      setIsInitialized(true);
+    };
+    init();
   }, [initialize]);
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
 
   return (
     <HashRouter>
       <Routes>
         <Route path="/auth" element={
-          <AuthGuard>
-            <AuthPage />
-          </AuthGuard>
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthPage />
         } />
         <Route path="/onboarding" element={
-          <OnboardingGuard>
+          <ProtectedRoute>
             <OnboardingPage />
-          </OnboardingGuard>
+          </ProtectedRoute>
         } />
         <Route path="/dashboard" element={
           <ProtectedRoute>
@@ -102,7 +81,7 @@ function App() {
             <DictionariesPage />
           </ProtectedRoute>
         } />
-        <Route path="*" element={<Navigate to="/auth" replace />} />
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/auth"} replace />} />
       </Routes>
     </HashRouter>
   );
