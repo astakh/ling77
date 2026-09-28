@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from database import get_db
-from models import User, Dictionary, Word, LearningProfile
+from models import User, Dictionary, Word, LearningProfile, DictionaryWord
 from schemas import (
     DictionaryResponse, DictionaryDetailResponse,
     DictionaryCreateRequest, DictionaryListResponse,
@@ -36,14 +36,15 @@ async def list_dictionaries(
     # Get word counts for each dictionary
     dict_responses = []
     for d in dictionaries:
-        # Count words by level
+        # Count words by level via DictionaryWord association
         count_result = await db.execute(
             select(
                 Word.level,
                 func.count(Word.id)
-            ).where(
-                Word.dictionary_id == d.id
-            ).group_by(Word.level)
+            )
+            .join(DictionaryWord, DictionaryWord.word_id == Word.id)
+            .where(DictionaryWord.dictionary_id == d.id)
+            .group_by(Word.level)
         )
         level_counts = {row[0]: row[1] for row in count_result.all()}
         total_words = sum(level_counts.values())
@@ -79,23 +80,25 @@ async def get_dictionary(
     if not dictionary:
         raise HTTPException(status_code=404, detail="Dictionary not found")
 
-    # Get word counts by level
+    # Get word counts by level via DictionaryWord
     count_result = await db.execute(
         select(
             Word.level,
             func.count(Word.id)
-        ).where(
-            Word.dictionary_id == dictionary.id
-        ).group_by(Word.level)
+        )
+        .join(DictionaryWord, DictionaryWord.word_id == Word.id)
+        .where(DictionaryWord.dictionary_id == dictionary.id)
+        .group_by(Word.level)
     )
     level_counts = {row[0]: row[1] for row in count_result.all()}
     total_words = sum(level_counts.values())
 
-    # Get sample words (first 10)
+    # Get sample words (first 10) via DictionaryWord
     sample_result = await db.execute(
-        select(Word).where(
-            Word.dictionary_id == dictionary.id
-        ).limit(10)
+        select(Word)
+        .join(DictionaryWord, DictionaryWord.word_id == Word.id)
+        .where(DictionaryWord.dictionary_id == dictionary.id)
+        .limit(10)
     )
     sample_words = [
         {
@@ -209,9 +212,11 @@ async def get_current_dictionary(
     if not dictionary:
         return {"dictionary": None, "message": "No dictionary assigned"}
 
-    # Get word count
+    # Get word count via DictionaryWord
     count_result = await db.execute(
-        select(func.count(Word.id)).where(Word.dictionary_id == dictionary.id)
+        select(func.count(Word.id))
+        .join(DictionaryWord, DictionaryWord.word_id == Word.id)
+        .where(DictionaryWord.dictionary_id == dictionary.id)
     )
     total_words = count_result.scalar() or 0
 

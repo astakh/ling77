@@ -48,14 +48,19 @@ class Dictionary(Base):
     __tablename__ = "dictionaries"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=False, unique=True)
     description = Column(Text, nullable=True)
+    category = Column(String(50), nullable=False, default="general")  # general, it, travel, business, etc.
+    is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
-    words = relationship("Word", back_populates="dictionary")
+    # M:N relationship through dictionary_words
+    words = relationship("DictionaryWord", back_populates="dictionary", cascade="all, delete-orphan")
 
 
 class Word(Base):
+    """Unique words - can belong to multiple dictionaries via DictionaryWord"""
     __tablename__ = "words"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -64,14 +69,32 @@ class Word(Base):
     pos = Column(String(32), nullable=False)  # part of speech
     level = Column(String(2), nullable=False)
     translations = Column(JSONB, nullable=False, default=[])
-    dictionary_id = Column(Integer, ForeignKey("dictionaries.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
-    dictionary = relationship("Dictionary", back_populates="words")
+    # M:N relationship through dictionary_words
+    dictionaries = relationship("DictionaryWord", back_populates="word", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("lemma_key", "pos", name="uq_words_lemma_pos"),
-        Index("ix_words_dictionary_level", "dictionary_id", "level"),
+    )
+
+
+class DictionaryWord(Base):
+    """Association table for M:N relationship between dictionaries and words"""
+    __tablename__ = "dictionary_words"
+
+    id = Column(Integer, primary_key=True, index=True)
+    dictionary_id = Column(Integer, ForeignKey("dictionaries.id", ondelete="CASCADE"), nullable=False)
+    word_id = Column(Integer, ForeignKey("words.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    dictionary = relationship("Dictionary", back_populates="words")
+    word = relationship("Word", back_populates="dictionaries")
+
+    __table_args__ = (
+        UniqueConstraint("dictionary_id", "word_id", name="uq_dictionary_word"),
+        Index("ix_dictionary_words_dict", "dictionary_id"),
+        Index("ix_dictionary_words_word", "word_id"),
     )
 
 

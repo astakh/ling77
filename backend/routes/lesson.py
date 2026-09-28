@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 from database import get_db
 from models import (
     User, LearningProfile, Lesson, LessonExercise, LessonExerciseWord,
-    Word, UserWord, Event
+    Word, UserWord, Event, DictionaryWord
 )
 from schemas import (
     LessonPreviewResponse, LessonPreviewWord, DeclineWordRequest,
@@ -84,11 +84,15 @@ async def select_words_for_lesson(
     due_words.sort(key=lambda x: x["hash"])
     due_words = due_words[:5]  # max 5 due words
 
-    # Get new words (not in user_words)
+    # Get new words (not in user_words) from the selected dictionary
     existing_ids = {uw.word_id for uw, _ in all_user_words}
+    
+    # Join with DictionaryWord to get words from the selected dictionary
     result = await db.execute(
-        select(Word).where(
-            Word.dictionary_id == profile.dictionary_id,
+        select(Word)
+        .join(DictionaryWord, DictionaryWord.word_id == Word.id)
+        .where(
+            DictionaryWord.dictionary_id == profile.dictionary_id,
             Word.level == profile.level,
         )
     )

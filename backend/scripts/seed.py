@@ -13,30 +13,62 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from sqlalchemy import select
 from database import async_session_factory
-from models import Dictionary, Word
+from models import Dictionary, Word, DictionaryWord
 
 
-# Initial dictionaries
+# Initial dictionaries with categories
 DICTIONARIES = [
+    # General dictionaries by level
     {
         "name": "Базовый словарь A1",
-        "description": "Самые частотные слова для начинающих. 100 слов уровня A1.",
+        "description": "Самые частотные слова для начинающих",
+        "category": "general",
     },
     {
         "name": "Элементарный словарь A2",
-        "description": "Слова для повседневного общения. 100 слов уровня A2.",
+        "description": "Слова для повседневного общения",
+        "category": "general",
     },
     {
         "name": "Средний словарь B1",
-        "description": "Слова для свободного общения на знакомые темы. 100 слов уровня B1.",
+        "description": "Слова для свободного общения на знакомые темы",
+        "category": "general",
     },
     {
         "name": "Продвинутый словарь B2",
-        "description": "Сложные слова для абстрактных тем. 100 слов уровня B2.",
+        "description": "Сложные слова для абстрактных тем",
+        "category": "general",
     },
     {
         "name": "Общий словарь (A1-B2)",
-        "description": "Объединённый словарь со словами всех уровней.",
+        "description": "Объединённый словарь со словами всех уровней",
+        "category": "general",
+    },
+    # Thematic dictionaries
+    {
+        "name": "IT и технологии",
+        "description": "Словарь для IT-специалистов: программирование, сети, железо",
+        "category": "it",
+    },
+    {
+        "name": "Путешествия",
+        "description": "Слова для путешественников: транспорт, отели, достопримечательности",
+        "category": "travel",
+    },
+    {
+        "name": "Бизнес и работа",
+        "description": "Деловая лексика: переговоры, финансы, управление",
+        "category": "business",
+    },
+    {
+        "name": "Еда и рестораны",
+        "description": "Кулинарная лексика: продукты, блюда, заказ в ресторане",
+        "category": "food",
+    },
+    {
+        "name": "Медицина и здоровье",
+        "description": "Медицинские термины и слова о здоровье",
+        "category": "medical",
     },
 ]
 
@@ -117,6 +149,70 @@ WORDS = [
     {"lemma": "breakthrough", "pos": "noun", "level": "B2", "translations": ["прорыв"]},
 ]
 
+# Thematic words for specific dictionaries
+THEMATIC_WORDS = {
+    "it": [
+        {"lemma": "algorithm", "pos": "noun", "level": "B1", "translations": ["алгоритм"]},
+        {"lemma": "database", "pos": "noun", "level": "B1", "translations": ["база данных"]},
+        {"lemma": "server", "pos": "noun", "level": "A2", "translations": ["сервер"]},
+        {"lemma": "deploy", "pos": "verb", "level": "B1", "translations": ["разворачивать", "деплоить"]},
+        {"lemma": "debug", "pos": "verb", "level": "B1", "translations": ["отлаживать"]},
+        {"lemma": "compile", "pos": "verb", "level": "B1", "translations": ["компилировать"]},
+        {"lemma": "repository", "pos": "noun", "level": "B1", "translations": ["репозиторий"]},
+        {"lemma": "framework", "pos": "noun", "level": "B1", "translations": ["фреймворк"]},
+        {"lemma": "interface", "pos": "noun", "level": "B1", "translations": ["интерфейс"]},
+        {"lemma": "variable", "pos": "noun", "level": "A2", "translations": ["переменная"]},
+    ],
+    "travel": [
+        {"lemma": "airport", "pos": "noun", "level": "A1", "translations": ["аэропорт"]},
+        {"lemma": "ticket", "pos": "noun", "level": "A1", "translations": ["билет"]},
+        {"lemma": "hotel", "pos": "noun", "level": "A1", "translations": ["отель", "гостиница"]},
+        {"lemma": "luggage", "pos": "noun", "level": "A2", "translations": ["багаж"]},
+        {"lemma": "departure", "pos": "noun", "level": "A2", "translations": ["отправление"]},
+        {"lemma": "arrival", "pos": "noun", "level": "A2", "translations": ["прибытие"]},
+        {"lemma": "boarding pass", "pos": "noun", "level": "A2", "translations": ["посадочный талон"]},
+        {"lemma": "customs", "pos": "noun", "level": "B1", "translations": ["таможня"]},
+        {"lemma": "itinerary", "pos": "noun", "level": "B1", "translations": ["маршрут", "итinerary"]},
+        {"lemma": "souvenir", "pos": "noun", "level": "A2", "translations": ["сувенир"]},
+    ],
+    "business": [
+        {"lemma": "deadline", "pos": "noun", "level": "B1", "translations": ["дедлайн", "срок"]},
+        {"lemma": "negotiation", "pos": "noun", "level": "B1", "translations": ["переговоры"]},
+        {"lemma": "profit", "pos": "noun", "level": "B1", "translations": ["прибыль"]},
+        {"lemma": "revenue", "pos": "noun", "level": "B1", "translations": ["выручка", "доход"]},
+        {"lemma": "stakeholder", "pos": "noun", "level": "B2", "translations": ["стейкхолдер", "заинтересованная сторона"]},
+        {"lemma": "budget", "pos": "noun", "level": "A2", "translations": ["бюджет"]},
+        {"lemma": "invoice", "pos": "noun", "level": "B1", "translations": ["счёт", "инвойс"]},
+        {"lemma": "contract", "pos": "noun", "level": "B1", "translations": ["контракт", "договор"]},
+        {"lemma": "proposal", "pos": "noun", "level": "B1", "translations": ["предложение", "пропозиция"]},
+        {"lemma": "meeting", "pos": "noun", "level": "A2", "translations": ["встреча", "совещание"]},
+    ],
+    "food": [
+        {"lemma": "recipe", "pos": "noun", "level": "A2", "translations": ["рецепт"]},
+        {"lemma": "ingredient", "pos": "noun", "level": "B1", "translations": ["ингредиент"]},
+        {"lemma": "appetizer", "pos": "noun", "level": "B1", "translations": ["закуска"]},
+        {"lemma": "dessert", "pos": "noun", "level": "A2", "translations": ["десерт"]},
+        {"lemma": "beverage", "pos": "noun", "level": "B1", "translations": ["напиток"]},
+        {"lemma": "menu", "pos": "noun", "level": "A1", "translations": ["меню"]},
+        {"lemma": "reservation", "pos": "noun", "level": "B1", "translations": ["бронь", "резерв"]},
+        {"lemma": "waiter", "pos": "noun", "level": "A2", "translations": ["официант"]},
+        {"lemma": "bill", "pos": "noun", "level": "A2", "translations": ["счёт"]},
+        {"lemma": "tip", "pos": "noun", "level": "A2", "translations": ["чаевые"]},
+    ],
+    "medical": [
+        {"lemma": "symptom", "pos": "noun", "level": "B1", "translations": ["симптом"]},
+        {"lemma": "diagnosis", "pos": "noun", "level": "B1", "translations": ["диагноз"]},
+        {"lemma": "treatment", "pos": "noun", "level": "B1", "translations": ["лечение"]},
+        {"lemma": "prescription", "pos": "noun", "level": "B1", "translations": ["рецепт", "назначение"]},
+        {"lemma": "pharmacy", "pos": "noun", "level": "A2", "translations": ["аптека"]},
+        {"lemma": "surgeon", "pos": "noun", "level": "B1", "translations": ["хирург"]},
+        {"lemma": "therapy", "pos": "noun", "level": "B1", "translations": ["терапия"]},
+        {"lemma": "vaccine", "pos": "noun", "level": "B1", "translations": ["вакцина"]},
+        {"lemma": "allergy", "pos": "noun", "level": "B1", "translations": ["аллергия"]},
+        {"lemma": "appointment", "pos": "noun", "level": "A2", "translations": ["приём", "запись"]},
+    ],
+}
+
 
 def make_lemma_key(lemma: str) -> str:
     return unicodedata.normalize("NFC", lemma).casefold().strip()
@@ -136,11 +232,15 @@ async def seed():
                 dict_map[d_data["name"]] = existing
                 print(f"  ✓ Dictionary '{d_data['name']}' already exists (id={existing.id})")
             else:
-                d = Dictionary(**d_data)
+                d = Dictionary(
+                    name=d_data["name"],
+                    description=d_data["description"],
+                    category=d_data["category"],
+                )
                 session.add(d)
                 await session.flush()
                 dict_map[d_data["name"]] = d
-                print(f"  + Created dictionary '{d.name}' (id={d.id})")
+                print(f"  + Created dictionary '{d.name}' (id={d.id}, category={d.category})")
 
         # 2. Add words to level-specific dictionaries
         print("\nAdding words to dictionaries...")
@@ -159,60 +259,141 @@ async def seed():
             lemma_key = make_lemma_key(word_data["lemma"])
             level = word_data["level"]
 
-            # Add to level-specific dictionary
-            target_dict = level_to_dict[level]
+            # Check if word exists globally
             result = await session.execute(
                 select(Word).where(
                     Word.lemma_key == lemma_key,
                     Word.pos == word_data["pos"],
-                    Word.dictionary_id == target_dict.id,
                 )
             )
-            if not result.scalar_one_or_none():
+            word = result.scalar_one_or_none()
+            
+            # Create word if it doesn't exist
+            if not word:
                 word = Word(
                     lemma=word_data["lemma"],
                     lemma_key=lemma_key,
                     pos=word_data["pos"],
                     level=level,
                     translations=word_data["translations"],
-                    dictionary_id=target_dict.id,
                 )
                 session.add(word)
+                await session.flush()
+                created_count += 1
+
+            # Add to level-specific dictionary
+            target_dict = level_to_dict[level]
+            result = await session.execute(
+                select(DictionaryWord).where(
+                    DictionaryWord.dictionary_id == target_dict.id,
+                    DictionaryWord.word_id == word.id,
+                )
+            )
+            if not result.scalar_one_or_none():
+                link = DictionaryWord(
+                    dictionary_id=target_dict.id,
+                    word_id=word.id,
+                )
+                session.add(link)
                 created_count += 1
 
             # Add to combined dictionary
             result = await session.execute(
-                select(Word).where(
-                    Word.lemma_key == lemma_key,
-                    Word.pos == word_data["pos"],
-                    Word.dictionary_id == combined_dict.id,
+                select(DictionaryWord).where(
+                    DictionaryWord.dictionary_id == combined_dict.id,
+                    DictionaryWord.word_id == word.id,
                 )
             )
             if not result.scalar_one_or_none():
-                word = Word(
-                    lemma=word_data["lemma"],
-                    lemma_key=lemma_key,
-                    pos=word_data["pos"],
-                    level=level,
-                    translations=word_data["translations"],
+                link = DictionaryWord(
                     dictionary_id=combined_dict.id,
+                    word_id=word.id,
                 )
-                session.add(word)
+                session.add(link)
                 created_count += 1
             else:
                 skipped_count += 1
 
+        # 4. Add thematic words to thematic dictionaries
+        print("\nAdding thematic words...")
+        thematic_dict_map = {
+            "it": dict_map.get("IT и технологии"),
+            "travel": dict_map.get("Путешествия"),
+            "business": dict_map.get("Бизнес и работа"),
+            "food": dict_map.get("Еда и рестораны"),
+            "medical": dict_map.get("Медицина и здоровье"),
+        }
+        
+        for category, words_list in THEMATIC_WORDS.items():
+            target_dict = thematic_dict_map.get(category)
+            if not target_dict:
+                print(f"  ⚠️  Skipping {category} - dictionary not found")
+                continue
+            
+            for word_data in words_list:
+                lemma_key = make_lemma_key(word_data["lemma"])
+                
+                # Check if word exists
+                result = await session.execute(
+                    select(Word).where(
+                        Word.lemma_key == lemma_key,
+                        Word.pos == word_data["pos"],
+                    )
+                )
+                word = result.scalar_one_or_none()
+                
+                if not word:
+                    word = Word(
+                        lemma=word_data["lemma"],
+                        lemma_key=lemma_key,
+                        pos=word_data["pos"],
+                        level=word_data["level"],
+                        translations=word_data["translations"],
+                    )
+                    session.add(word)
+                    await session.flush()
+                    created_count += 1
+                
+                # Link to thematic dictionary
+                result = await session.execute(
+                    select(DictionaryWord).where(
+                        DictionaryWord.dictionary_id == target_dict.id,
+                        DictionaryWord.word_id == word.id,
+                    )
+                )
+                if not result.scalar_one_or_none():
+                    link = DictionaryWord(
+                        dictionary_id=target_dict.id,
+                        word_id=word.id,
+                    )
+                    session.add(link)
+                    created_count += 1
+                
+                # Also link to combined dictionary
+                result = await session.execute(
+                    select(DictionaryWord).where(
+                        DictionaryWord.dictionary_id == combined_dict.id,
+                        DictionaryWord.word_id == word.id,
+                    )
+                )
+                if not result.scalar_one_or_none():
+                    link = DictionaryWord(
+                        dictionary_id=combined_dict.id,
+                        word_id=word.id,
+                    )
+                    session.add(link)
+        
         await session.commit()
         print(f"\n✓ Done! Created {created_count} word entries, skipped {skipped_count}")
 
-        # 3. Print summary
+        # 5. Print summary
         print("\n=== Summary ===")
         for name, d in dict_map.items():
             result = await session.execute(
-                select(Word).where(Word.dictionary_id == d.id)
+                select(DictionaryWord).where(DictionaryWord.dictionary_id == d.id)
             )
             count = len(result.scalars().all())
-            print(f"  {name}: {count} words")
+            print(f"  {name} [{d.category}]: {count} words")
 
 
 if __name__ == "__main__":

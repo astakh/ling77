@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from sqlalchemy import select
 from database import async_session_factory
-from models import Dictionary, Word
+from models import Dictionary, Word, DictionaryWord
 
 
 def make_lemma_key(lemma: str) -> str:
@@ -160,22 +160,43 @@ async def import_words(
                 # Create lemma key
                 lemma_key = make_lemma_key(lemma)
                 
-                # Check for duplicates
+                # Check if word exists globally
                 result = await session.execute(
                     select(Word).where(
                         Word.lemma_key == lemma_key,
                         Word.pos == pos,
-                        Word.dictionary_id == dictionary.id,
                     )
                 )
-                existing = result.scalar_one_or_none()
-                
-                if existing:
-                    skipped_count += 1
-                    if not dry_run:
-                        print(f"  ⏭️  Skipped: {lemma} ({pos}) - already exists")
-                    continue
-                
+                existing_word = result.scalar_one_or_none()
+
+                if existing_word:
+                    # Word exists - check if already linked to this dictionary
+                    link_result = await session.execute(
+                        select(DictionaryWord).where(
+                            DictionaryWord.dictionary_id == dictionary.id,
+                            DictionaryWord.word_id == existing_word.id,
+                        )
+                    )
+                    existing_link = link_result.scalar_one_or_none()
+                    
+                    if existing_link:
+                        skipped_count += 1
+                        if not dry_run:
+                            print(f"  ⏭️  Skipped: {lemma} ({pos}) - already in dictionary")
+                        continue
+                    else:
+                        # Word exists but not in this dictionary - add link
+                        if not dry_run:
+                            link = DictionaryWord(
+                                dictionary_id=dictionary.id,
+                                word_id=existing_word.id,
+                            )
+                            session.add(link)
+                        created_count += 1
+                        if not dry_run:
+                            print(f"  ✅ Linked: {lemma} ({pos}) - {', '.join(translations)}")
+                        continue
+
                 # Add new word
                 if not dry_run:
                     word = Word(
@@ -184,14 +205,20 @@ async def import_words(
                         pos=pos,
                         level=level,
                         translations=translations,
-                        dictionary_id=dictionary.id,
                     )
                     session.add(word)
-                
+                    await session.flush()  # Get word.id
+                    
+                    # Create link to dictionary
+                    link = DictionaryWord(
+                        dictionary_id=dictionary.id,
+                        word_id=word.id,
+                    )
+                    session.add(link)
+
                 created_count += 1
                 if not dry_run:
-                    print(f"  ✅ Added: {lemma} ({pos}) - {', '.join(translations)}")
-            
+                    print(f"  ✅ Added: {lemma} ({pos}) - {', '.join(translations)}")            
             except Exception as e:
                 errors.append(f"Item {i} ({word_data.get('lemma', 'unknown')}): {str(e)}")
         

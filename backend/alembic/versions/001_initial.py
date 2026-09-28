@@ -1,4 +1,4 @@
-"""initial migration
+"""initial migration with M:N dictionary-word relationship
 
 Revision ID: 001_initial
 Revises: 
@@ -32,13 +32,16 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
     )
 
-    # Dictionaries table
+    # Dictionaries table (with category for thematic dictionaries)
     op.create_table(
         'dictionaries',
         sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('name', sa.String(255), nullable=False),
+        sa.Column('name', sa.String(255), nullable=False, unique=True),
         sa.Column('description', sa.Text(), nullable=True),
+        sa.Column('category', sa.String(50), nullable=False, server_default='general'),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.true()),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
     )
 
     # Learning profiles table
@@ -54,7 +57,7 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
     )
 
-    # Words table
+    # Words table (unique words, no dictionary_id)
     op.create_table(
         'words',
         sa.Column('id', sa.Integer(), primary_key=True),
@@ -63,11 +66,21 @@ def upgrade() -> None:
         sa.Column('pos', sa.String(32), nullable=False),
         sa.Column('level', sa.String(2), nullable=False),
         sa.Column('translations', postgresql.JSONB(), nullable=False, server_default='[]'),
-        sa.Column('dictionary_id', sa.Integer(), sa.ForeignKey('dictionaries.id', ondelete='CASCADE'), nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint('lemma_key', 'pos', name='uq_words_lemma_pos'),
     )
-    op.create_index('ix_words_dictionary_level', 'words', ['dictionary_id', 'level'])
+
+    # Dictionary-Word association table (M:N relationship)
+    op.create_table(
+        'dictionary_words',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('dictionary_id', sa.Integer(), sa.ForeignKey('dictionaries.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('word_id', sa.Integer(), sa.ForeignKey('words.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.UniqueConstraint('dictionary_id', 'word_id', name='uq_dictionary_word'),
+    )
+    op.create_index('ix_dictionary_words_dict', 'dictionary_words', ['dictionary_id'])
+    op.create_index('ix_dictionary_words_word', 'dictionary_words', ['word_id'])
 
     # User words table
     op.create_table(
@@ -185,7 +198,9 @@ def downgrade() -> None:
     op.drop_table('lessons')
     op.drop_index('ix_user_words_due', table_name='user_words')
     op.drop_table('user_words')
-    op.drop_index('ix_words_dictionary_level', table_name='words')
+    op.drop_index('ix_dictionary_words_word', table_name='dictionary_words')
+    op.drop_index('ix_dictionary_words_dict', table_name='dictionary_words')
+    op.drop_table('dictionary_words')
     op.drop_table('words')
     op.drop_table('learning_profiles')
     op.drop_table('dictionaries')

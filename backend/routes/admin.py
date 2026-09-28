@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from database import get_db
-from models import User, Dictionary, Word, Lesson, LearningProfile
+from models import User, Dictionary, Word, Lesson, LearningProfile, DictionaryWord
 from schemas import DictionaryImportRequest, DictionaryImportResponse
 from auth import get_current_admin
 
@@ -48,23 +48,43 @@ async def import_dictionary(
             import unicodedata
             lemma_key = unicodedata.normalize("NFC", lemma).casefold().strip()
 
-            # Check existing
+            # Check if word exists (globally by lemma_key + pos)
             result = await db.execute(
                 select(Word).where(
                     Word.lemma_key == lemma_key,
                     Word.pos == pos,
-                    Word.dictionary_id == body.dictionary_id,
                 )
             )
-            existing = result.scalar_one_or_none()
+            existing_word = result.scalar_one_or_none()
 
-            if existing:
-                if not body.dry_run:
-                    existing.lemma = lemma
-                    existing.translations = translations
-                    existing.level = level
-                updated += 1
+            if existing_word:
+                # Word exists - check if it's already in this dictionary
+                link_result = await db.execute(
+                    select(DictionaryWord).where(
+                        DictionaryWord.dictionary_id == body.dictionary_id,
+                        DictionaryWord.word_id == existing_word.id,
+                    )
+                )
+                existing_link = link_result.scalar_one_or_none()
+                
+                if existing_link:
+                    # Already linked - update word data
+                    if not body.dry_run:
+                        existing_word.lemma = lemma
+                        existing_word.translations = translations
+                        existing_word.level = level
+                    updated += 1
+                else:
+                    # Word exists but not in this dictionary - add link
+                    if not body.dry_run:
+                        link = DictionaryWord(
+                            dictionary_id=body.dictionary_id,
+                            word_id=existing_word.id,
+                        )
+                        db.add(link)
+                    updated += 1
             else:
+                # New word - create it and link to dictionary
                 if not body.dry_run:
                     word = Word(
                         lemma=lemma,
@@ -72,9 +92,15 @@ async def import_dictionary(
                         pos=pos,
                         level=level,
                         translations=translations,
-                        dictionary_id=body.dictionary_id,
                     )
                     db.add(word)
+                    await db.flush()  # Get word.id
+                    
+                    link = DictionaryWord(
+                        dictionary_id=body.dictionary_id,
+                        word_id=word.id,
+                    )
+                    db.add(link)
                 created += 1
 
         except Exception as e:
