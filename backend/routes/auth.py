@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import secrets
 
 import logging
@@ -55,7 +55,7 @@ async def register(
         user_id=user.id,
         token_hash=hash_refresh_token(refresh_token),
         family_id=family_id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(rt)
     await db.flush()
@@ -92,7 +92,7 @@ async def login(
         user_id=user.id,
         token_hash=hash_refresh_token(refresh_token),
         family_id=family_id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(rt)
     await db.flush()
@@ -135,7 +135,7 @@ async def refresh(
     if not old_rt:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    if old_rt.expires_at < datetime.now(timezone.utc):
+    if old_rt.expires_at < datetime.utcnow():
         raise HTTPException(status_code=401, detail="Refresh token expired")
 
     # Check for token reuse (potential theft)
@@ -153,7 +153,7 @@ async def refresh(
         user_id=old_rt.user_id,
         token_hash=hash_refresh_token(new_refresh_token),
         family_id=old_rt.family_id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(new_rt)
     await db.flush()

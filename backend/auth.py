@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
 import secrets
 import hashlib
@@ -28,7 +28,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(user_id: int) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": str(user_id),
         "exp": expire,
@@ -99,7 +99,7 @@ class RateLimiter:
         self.requests: dict[str, list[float]] = {}
 
     def is_allowed(self, key: str) -> bool:
-        now = datetime.now(timezone.utc).timestamp()
+        now = datetime.utcnow().timestamp()
         window_start = now - self.window_seconds
 
         if key not in self.requests:
