@@ -32,10 +32,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Middleware для логирования запросов
+# Middleware для логирования запросов и CORS
 @app.middleware("http")
-async def log_requests(request, call_next):
+async def add_cors_and_log(request, call_next):
     logger.info(f"📨 {request.method} {request.url.path} from {request.client.host if request.client else 'unknown'}")
+    
+    # Обработка OPTIONS запросов (preflight)
+    if request.method == "OPTIONS":
+        from fastapi.responses import JSONResponse
+        response = JSONResponse(content={"status": "ok"})
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "3600"
+        logger.info(f"🔧 OPTIONS preflight → 200")
+        return response
+    
     try:
         response = await call_next(request)
         logger.info(f"📤 {request.method} {request.url.path} → {response.status_code}")
