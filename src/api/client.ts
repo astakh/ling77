@@ -215,9 +215,9 @@ export const api = {
 
   // Dictionaries
   dictionaries: {
-    list: (level?: string, search?: string) => {
+    list: (category?: string, search?: string) => {
       const params = new URLSearchParams();
-      if (level) params.set('level', level);
+      if (category) params.set('category', category);
       if (search) params.set('search', search);
       const query = params.toString();
       return request<{ dictionaries: any[] }>(`/dictionaries${query ? `?${query}` : ''}`);

@@ -20,15 +20,23 @@ router = APIRouter(prefix="/dictionaries", tags=["dictionaries"])
 
 @router.get("", response_model=DictionaryListResponse)
 async def list_dictionaries(
-    level: str | None = Query(None, description="Filter by level (A1, A2, B1, B2)"),
+    category: str | None = Query(None, description="Filter by category (general, it, travel, business, food, medical, daily)"),
     search: str | None = Query(None, description="Search by name"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get list of all available dictionaries with word counts."""
-    query = select(Dictionary)
+    """
+    Get list of all available dictionaries with word counts.
+    
+    Dictionaries are THEMATIC (IT, travel, business, etc.) — NOT level-based.
+    Word level (A1-B2) is a property of the word itself.
+    """
+    query = select(Dictionary).where(Dictionary.is_active == True)
 
     if search:
         query = query.where(Dictionary.name.ilike(f"%{search}%"))
+    
+    if category:
+        query = query.where(Dictionary.category == category)
 
     result = await db.execute(query)
     dictionaries = result.scalars().all()
@@ -53,15 +61,12 @@ async def list_dictionaries(
             id=d.id,
             name=d.name,
             description=d.description,
+            category=d.category,
             total_words=total_words,
             levels=list(level_counts.keys()),
             level_counts=level_counts,
             created_at=d.created_at,
         ))
-
-    # Filter by level if specified
-    if level:
-        dict_responses = [d for d in dict_responses if level in d.levels]
 
     return DictionaryListResponse(dictionaries=dict_responses)
 

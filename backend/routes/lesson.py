@@ -87,13 +87,22 @@ async def select_words_for_lesson(
     # Get new words (not in user_words) from the selected dictionary
     existing_ids = {uw.word_id for uw, _ in all_user_words}
     
+    # Level hierarchy: A1 < A2 < B1 < B2
+    # User sees words with level <= their own level
+    level_order = {"A1": 1, "A2": 2, "B1": 3, "B2": 4}
+    allowed_levels = [
+        lvl for lvl, order in level_order.items()
+        if order <= level_order.get(profile.level, 4)
+    ]
+    
     # Join with DictionaryWord to get words from the selected dictionary
+    # Filter by word level <= user level
     result = await db.execute(
         select(Word)
         .join(DictionaryWord, DictionaryWord.word_id == Word.id)
         .where(
             DictionaryWord.dictionary_id == profile.dictionary_id,
-            Word.level == profile.level,
+            Word.level.in_(allowed_levels),
         )
     )
     all_dict_words = result.scalars().all()

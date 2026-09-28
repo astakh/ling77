@@ -162,8 +162,9 @@ class DictionaryResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
+    category: str = "general"
     total_words: int
-    levels: list[str]
+    levels: list[str]  # Levels of words IN this dictionary (not the dictionary's level)
     level_counts: dict[str, int]
     created_at: datetime
 

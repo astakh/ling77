@@ -8,11 +8,22 @@ interface Dictionary {
   id: number;
   name: string;
   description: string | null;
+  category: string;
   total_words: number;
   levels: string[];
   level_counts: Record<string, number>;
   created_at: string;
 }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  general: '📚 Общий',
+  it: '💻 IT',
+  travel: '✈️ Путешествия',
+  business: '💼 Бизнес',
+  food: '🍽️ Еда',
+  medical: '🏥 Медицина',
+  daily: '💬 Повседневное',
+};
 
 export default function DictionariesPage() {
   const navigate = useNavigate();
@@ -22,7 +33,7 @@ export default function DictionariesPage() {
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState<number | null>(null);
   const [search, setSearch] = useState('');
-  const [filterLevel, setFilterLevel] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<string>('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -31,7 +42,7 @@ export default function DictionariesPage() {
     setError('');
     try {
       const [dictsRes, currentRes] = await Promise.all([
-        api.dictionaries.list(filterLevel || undefined, search || undefined),
+        api.dictionaries.list(filterCategory || undefined, search || undefined),
         api.dictionaries.getCurrent(),
       ]);
       setDictionaries(dictsRes.dictionaries);
@@ -45,7 +56,7 @@ export default function DictionariesPage() {
 
   useEffect(() => {
     loadData();
-  }, [filterLevel, search]);
+  }, [filterCategory, search]);
 
   const handleChangeDictionary = async (dictId: number, dictName: string) => {
     if (dictId === currentDictId) return;
@@ -77,7 +88,7 @@ export default function DictionariesPage() {
 
   const filteredDicts = dictionaries.filter(d => {
     if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterLevel && !d.levels.includes(filterLevel)) return false;
+    if (filterCategory && d.category !== filterCategory) return false;
     return true;
   });
 
@@ -148,16 +159,19 @@ export default function DictionariesPage() {
           <div className="flex gap-2 overflow-x-auto pb-1">
             {[
               { value: '', label: 'Все' },
-              { value: 'A1', label: 'A1' },
-              { value: 'A2', label: 'A2' },
-              { value: 'B1', label: 'B1' },
-              { value: 'B2', label: 'B2' },
+              { value: 'general', label: '📚 Общий' },
+              { value: 'it', label: '💻 IT' },
+              { value: 'travel', label: '✈️ Путешествия' },
+              { value: 'business', label: '💼 Бизнес' },
+              { value: 'food', label: '🍽️ Еда' },
+              { value: 'medical', label: '🏥 Медицина' },
+              { value: 'daily', label: '💬 Повседневное' },
             ].map(f => (
               <button
                 key={f.value}
-                onClick={() => setFilterLevel(f.value)}
+                onClick={() => setFilterCategory(f.value)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
-                  filterLevel === f.value
+                  filterCategory === f.value
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'bg-white text-gray-500 border border-gray-200'
                 }`}
@@ -208,19 +222,27 @@ export default function DictionariesPage() {
                       {dict.description && (
                         <p className="text-sm text-gray-500 mb-2">{dict.description}</p>
                       )}
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
                         <span>{dict.total_words} слов</span>
                         <span>•</span>
-                        <div className="flex gap-1">
-                          {dict.levels.sort().map(level => (
-                            <span
-                              key={level}
-                              className="bg-gray-100 px-2 py-0.5 rounded"
-                            >
-                              {level}: {dict.level_counts[level]}
-                            </span>
-                          ))}
-                        </div>
+                        <span className="bg-gray-100 px-2 py-0.5 rounded">
+                          {CATEGORY_LABELS[dict.category] || dict.category}
+                        </span>
+                        {Object.keys(dict.level_counts).length > 0 && (
+                          <>
+                            <span>•</span>
+                            <div className="flex gap-1">
+                              {dict.levels.sort().map(level => (
+                                <span
+                                  key={level}
+                                  className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded"
+                                >
+                                  {level}: {dict.level_counts[level]}
+                                </span>
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 

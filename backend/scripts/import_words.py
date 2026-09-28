@@ -78,7 +78,8 @@ def load_words_file(filepath: str = "words.json") -> list[dict]:
                 raise ValueError(f"Item {i}: 'translations' must be an array")
             
             if word['level'] not in ['A1', 'A2', 'B1', 'B2']:
-                raise ValueError(f"Item {i}: invalid level '{word['level']}'. Must be A1, A2, B1, or B2")
+                raise ValueError(f"Item {i}: invalid level '{word['level']}'. Must be A1, A2, B1, or B2. "
+                                 "Note: level is a property of the WORD, not the dictionary.")
         
         return words
     
@@ -137,12 +138,20 @@ async def import_words(
             print("❌ Error: Must specify either --dictionary-id or --dictionary-name")
             sys.exit(1)
         
+        # Find "Общий словарь" for automatic linking
+        result = await session.execute(
+            select(Dictionary).where(Dictionary.name == "Общий словарь")
+        )
+        general_dict = result.scalar_one_or_none()
+        
         # Import words
         created_count = 0
         skipped_count = 0
         errors = []
         
         print(f"\n📥 Importing {len(words)} words into dictionary '{dictionary.name}'...")
+        if general_dict and dictionary.id != general_dict.id:
+            print(f"   Words will also be linked to 'Общий словарь'")
         if dry_run:
             print("🔍 DRY RUN MODE - no changes will be saved\n")
         
@@ -192,9 +201,25 @@ async def import_words(
                                 word_id=existing_word.id,
                             )
                             session.add(link)
+                            
+                            # Also link to "Общий словарь" if not already linked
+                            if general_dict and dictionary.id != general_dict.id:
+                                general_check = await session.execute(
+                                    select(DictionaryWord).where(
+                                        DictionaryWord.dictionary_id == general_dict.id,
+                                        DictionaryWord.word_id == existing_word.id,
+                                    )
+                                )
+                                if not general_check.scalar_one_or_none():
+                                    general_link = DictionaryWord(
+                                        dictionary_id=general_dict.id,
+                                        word_id=existing_word.id,
+                                    )
+                                    session.add(general_link)
+                        
                         created_count += 1
                         if not dry_run:
-                            print(f"  ✅ Linked: {lemma} ({pos}) - {', '.join(translations)}")
+                            print(f"  ✅ Linked: {lemma} ({pos}) [{existing_word.level}] - {', '.join(translations)}")
                         continue
 
                 # Add new word
@@ -209,16 +234,24 @@ async def import_words(
                     session.add(word)
                     await session.flush()  # Get word.id
                     
-                    # Create link to dictionary
+                    # Create link to target dictionary
                     link = DictionaryWord(
                         dictionary_id=dictionary.id,
                         word_id=word.id,
                     )
                     session.add(link)
+                    
+                    # Also link to "Общий словарь" if it exists and is different
+                    if general_dict and dictionary.id != general_dict.id:
+                        general_link = DictionaryWord(
+                            dictionary_id=general_dict.id,
+                            word_id=word.id,
+                        )
+                        session.add(general_link)
 
                 created_count += 1
                 if not dry_run:
-                    print(f"  ✅ Added: {lemma} ({pos}) - {', '.join(translations)}")            
+                    print(f"  ✅ Added: {lemma} ({pos}) [{level}] - {', '.join(translations)}")            
             except Exception as e:
                 errors.append(f"Item {i} ({word_data.get('lemma', 'unknown')}): {str(e)}")
         
