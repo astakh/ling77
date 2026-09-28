@@ -212,6 +212,32 @@ export const api = {
         body: JSON.stringify({ status }),
       }),
   },
+
+  // Dictionaries
+  dictionaries: {
+    list: (level?: string, search?: string) => {
+      const params = new URLSearchParams();
+      if (level) params.set('level', level);
+      if (search) params.set('search', search);
+      const query = params.toString();
+      return request<{ dictionaries: any[] }>(`/dictionaries${query ? `?${query}` : ''}`);
+    },
+
+    get: (id: number) =>
+      request<any>(`/dictionaries/${id}`),
+
+    getCurrent: () =>
+      request<{ dictionary: any | null; message?: string }>('/dictionaries/profile/current'),
+
+    change: (dictionaryId: number) =>
+      request<{ status: string; dictionary_id: number; dictionary_name: string }>(
+        '/dictionaries/profile/dictionary',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ dictionary_id: dictionaryId }),
+        }
+      ),
+  },
 };
 
 export { ApiError };

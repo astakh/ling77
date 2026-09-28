@@ -140,6 +140,7 @@ export const useStore = create<AppState>((set, get) => ({
     const profile: LearningProfile = {
       userId: user.id,
       level,
+      dictionaryId: null,
       dailyLessonLimit: 5,
       lastLessonNumber: 0,
       userWords: [],

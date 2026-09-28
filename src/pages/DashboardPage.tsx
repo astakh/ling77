@@ -1,6 +1,6 @@
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
-import { Flame, BookOpen, Brain, Target, Play, Clock, LogOut, List } from 'lucide-react';
+import { Flame, BookOpen, Brain, Target, Play, Clock, LogOut, List, Library } from 'lucide-react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -30,9 +30,16 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => navigate('/dictionaries')}
+              className="p-2 text-gray-500 hover:text-indigo-600 transition"
+              title="Словари"
+            >
+              <Library className="w-5 h-5" />
+            </button>
+            <button
               onClick={() => navigate('/vocabulary')}
               className="p-2 text-gray-500 hover:text-indigo-600 transition"
-              title="Словарь"
+              title="Мои слова"
             >
               <List className="w-5 h-5" />
             </button>

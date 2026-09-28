@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routes import auth, onboarding, dashboard, lesson, vocabulary, admin
+from routes import auth, onboarding, dashboard, lesson, vocabulary, admin, dictionaries
 
 # Configure logging
 logging.basicConfig(
@@ -48,6 +48,7 @@ app.include_router(onboarding.router)
 app.include_router(dashboard.router)
 app.include_router(lesson.router)
 app.include_router(vocabulary.router)
+app.include_router(dictionaries.router)
 app.include_router(admin.router)
 
 

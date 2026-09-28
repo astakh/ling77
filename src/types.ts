@@ -56,6 +56,7 @@ export interface Lesson {
 export interface LearningProfile {
   userId: string;
   level: Level;
+  dictionaryId: number | null;
   dailyLessonLimit: number;
   lastLessonNumber: number;
   userWords: UserWord[];

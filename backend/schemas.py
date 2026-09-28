@@ -156,6 +156,35 @@ class UpdateWordStatusRequest(BaseModel):
     status: Literal["active", "ignored", "mastered"]
 
 
+# ============ Dictionaries ============
+
+class DictionaryResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    total_words: int
+    levels: list[str]
+    level_counts: dict[str, int]
+    created_at: datetime
+
+
+class DictionaryDetailResponse(DictionaryResponse):
+    sample_words: list[dict]
+
+
+class DictionaryListResponse(BaseModel):
+    dictionaries: list[DictionaryResponse]
+
+
+class DictionaryCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    description: Optional[str] = None
+
+
+class ChangeDictionaryRequest(BaseModel):
+    dictionary_id: int
+
+
 # ============ Admin ============
 
 class DictionaryImportRequest(BaseModel):

@@ -8,6 +8,7 @@ import LessonPreviewPage from './pages/LessonPreviewPage';
 import ExercisePage from './pages/ExercisePage';
 import LessonSummaryPage from './pages/LessonSummaryPage';
 import VocabularyPage from './pages/VocabularyPage';
+import DictionariesPage from './pages/DictionariesPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useStore();
@@ -94,6 +95,11 @@ function App() {
         <Route path="/vocabulary" element={
           <ProtectedRoute>
             <VocabularyPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/dictionaries" element={
+          <ProtectedRoute>
+            <DictionariesPage />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/auth" replace />} />
