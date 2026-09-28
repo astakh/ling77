@@ -128,6 +128,15 @@ export const api = {
 
     logout: () =>
       request<{ status: string }>('/auth/logout', { method: 'POST', credentials: 'omit' }),
+
+    me: () =>
+      request<{
+        id: number;
+        email: string;
+        timezone: string;
+        is_onboarded: boolean;
+        is_admin: boolean;
+      }>('/auth/me'),
   },
 
   // Onboarding

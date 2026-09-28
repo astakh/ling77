@@ -8,17 +8,32 @@ from sqlalchemy import select, delete
 
 from database import get_db
 from models import User, RefreshToken
-from schemas import RegisterRequest, LoginRequest, TokenResponse
+from schemas import RegisterRequest, LoginRequest, TokenResponse, UserResponse
 from auth import (
     hash_password, verify_password, create_access_token,
     create_refresh_token, hash_refresh_token, decode_token,
-    auth_rate_limiter
+    auth_rate_limiter, get_current_user
 )
 from config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(
+    user: User = Depends(get_current_user),
+):
+    """Get current user information"""
+    logger.info(f"👤 Getting user info: {user.email}")
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        timezone=user.timezone,
+        is_onboarded=user.is_onboarded,
+        is_admin=user.is_admin,
+    )
 
 
 @router.post("/register", response_model=TokenResponse)

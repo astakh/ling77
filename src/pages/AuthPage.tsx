@@ -24,12 +24,15 @@ export default function AuthPage() {
         if (!success) {
           setError('Неверный email или пароль');
         }
+        // Redirect will be handled by App.tsx based on is_onboarded
       } else {
         if (password.length < 6) {
           setError('Пароль должен быть не менее 6 символов');
           return;
         }
         await register(email, password);
+        // After registration, user is not onboarded yet
+        // App.tsx will redirect to /onboarding
       }
     } catch (err: any) {
       setError(err.detail || 'Ошибка. Попробуйте ещё раз.');

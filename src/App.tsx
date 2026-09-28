@@ -11,17 +11,22 @@ import VocabularyPage from './pages/VocabularyPage';
 import DictionariesPage from './pages/DictionariesPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useStore();
+  const { isAuthenticated, user } = useStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // If user is authenticated but not onboarded, redirect to onboarding
+  if (user && !user.isOnboarded) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <>{children}</>;
 }
 
 function App() {
-  const { initialize, isAuthenticated } = useStore();
+  const { initialize, isAuthenticated, user } = useStore();
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -44,7 +49,11 @@ function App() {
     <HashRouter>
       <Routes>
         <Route path="/auth" element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthPage />
+          isAuthenticated 
+            ? (user?.isOnboarded 
+                ? <Navigate to="/dashboard" replace /> 
+                : <Navigate to="/onboarding" replace />)
+            : <AuthPage />
         } />
         <Route path="/onboarding" element={
           <ProtectedRoute>

@@ -43,7 +43,13 @@ export default function DictionariesPage() {
     try {
       const [dictsRes, currentRes] = await Promise.all([
         api.dictionaries.list(filterCategory || undefined, search || undefined),
-        api.dictionaries.getCurrent(),
+        api.dictionaries.getCurrent().catch(err => {
+          // 400 means no profile yet - that's ok
+          if (err.status === 400) {
+            return { dictionary: null };
+          }
+          throw err;
+        }),
       ]);
       setDictionaries(dictsRes.dictionaries);
       setCurrentDictId(currentRes.dictionary?.id || null);

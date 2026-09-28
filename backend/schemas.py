@@ -30,6 +30,14 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    timezone: str
+    is_onboarded: bool
+    is_admin: bool
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

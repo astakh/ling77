@@ -31,7 +31,7 @@ interface AppState {
   register: (email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  completeOnboarding: (timezone: string, level: Level) => Promise<void>;
+  completeOnboarding: (timezone: string, level: Level, dictionaryId?: number | null) => Promise<void>;
   getDashboardSummary: () => Promise<DashboardSummary>;
   startLesson: () => Promise<Lesson>;
   previewLesson: () => Promise<{ words: { id: string; lemma: string; translations: string[]; isNew: boolean; isDue: boolean }[] }>;
@@ -68,12 +68,17 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     try {
-      // Try to get dashboard summary to check if user is authenticated and onboarded
-      const summary = await api.dashboard.summary();
-      set({ isAuthenticated: true });
-      
-      // If we got here, user is authenticated
-      // We'll load full user data on demand
+      // Get current user info
+      const user = await api.auth.me();
+      set({ 
+        isAuthenticated: true,
+        user: {
+          id: String(user.id),
+          email: user.email,
+          timezone: user.timezone,
+          isOnboarded: user.is_onboarded,
+        }
+      });
     } catch (error: any) {
       if (error.status === 401) {
         localStorage.removeItem('access_token');
@@ -126,11 +131,29 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 
-  completeOnboarding: async (timezone: string, level: Level) => {
+  completeOnboarding: async (timezone: string, level: Level, dictionaryId?: number | null) => {
     set({ isLoading: true, error: null });
     try {
       await api.onboarding.complete(timezone, level);
-      set({ isLoading: false });
+      
+      // If dictionary selected, set it as current
+      if (dictionaryId) {
+        try {
+          await api.dictionaries.change(dictionaryId);
+        } catch (err) {
+          console.error('Failed to set dictionary:', err);
+          // Don't fail onboarding if dictionary selection fails
+        }
+      }
+      
+      // Update user state
+      set({ 
+        isLoading: false,
+        user: {
+          ...get().user!,
+          isOnboarded: true,
+        }
+      });
     } catch (error: any) {
       set({ error: error.detail || 'Onboarding failed', isLoading: false });
       throw error;

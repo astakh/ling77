@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Level } from '../types';
-import { GraduationCap, Globe, ArrowRight } from 'lucide-react';
+import { GraduationCap, Globe, ArrowRight, BookOpen } from 'lucide-react';
+import { api } from '../api/client';
 
 const LEVELS: { value: Level; label: string; description: string }[] = [
   { value: 'A1', label: 'A1 — Начальный', description: 'Базовые слова и фразы' },
@@ -10,14 +11,48 @@ const LEVELS: { value: Level; label: string; description: string }[] = [
   { value: 'B2', label: 'B2 — Выше среднего', description: 'Сложные тексты и абстрактные темы' },
 ];
 
+interface Dictionary {
+  id: number;
+  name: string;
+  description: string | null;
+  category: string;
+  total_words: number;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  general: '📚 Общий',
+  it: '💻 IT',
+  travel: '✈️ Путешествия',
+  business: '💼 Бизнес',
+  food: '🍽️ Еда',
+  medical: '🏥 Медицина',
+  daily: '💬 Повседневное',
+};
+
 export default function OnboardingPage() {
   const [level, setLevel] = useState<Level>('A1');
   const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow');
+  const [dictionaries, setDictionaries] = useState<Dictionary[]>([]);
+  const [selectedDictId, setSelectedDictId] = useState<number | null>(null);
   const { completeOnboarding, isLoading } = useStore();
+
+  useEffect(() => {
+    // Load dictionaries
+    api.dictionaries.list().then(res => {
+      setDictionaries(res.dictionaries);
+      // Select "Общий словарь" by default
+      const generalDict = res.dictionaries.find(d => d.category === 'general' && d.name.includes('Общий'));
+      if (generalDict) {
+        setSelectedDictId(generalDict.id);
+      }
+    }).catch(err => {
+      console.error('Failed to load dictionaries:', err);
+    });
+  }, []);
 
   const handleComplete = async () => {
     try {
-      await completeOnboarding(timezone, level);
+      await completeOnboarding(timezone, level, selectedDictId);
     } catch (error) {
       console.error('Onboarding failed:', error);
     }
@@ -57,9 +92,44 @@ export default function OnboardingPage() {
             <span>Часовой пояс: {timezone}</span>
           </div>
 
+          {/* Dictionary selection */}
+          {dictionaries.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen className="w-4 h-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">Выберите словарь</span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {dictionaries.map(dict => (
+                  <button
+                    key={dict.id}
+                    onClick={() => setSelectedDictId(dict.id)}
+                    className={`w-full p-3 rounded-lg border-2 text-left transition ${
+                      selectedDictId === dict.id
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-100 hover:border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-800 text-sm">
+                          {CATEGORY_LABELS[dict.category] || dict.category} {dict.name}
+                        </div>
+                        {dict.description && (
+                          <div className="text-xs text-gray-500 mt-0.5">{dict.description}</div>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400">{dict.total_words} слов</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleComplete}
-            disabled={isLoading}
+            disabled={isLoading || !selectedDictId}
             className="w-full py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-50"
           >
             {isLoading ? (
