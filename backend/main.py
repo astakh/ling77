@@ -44,11 +44,6 @@ app.add_middleware(
     max_age=600,
 )
 
-# Handle OPTIONS preflight requests explicitly
-@app.options("/{rest_of_path:path}")
-async def preflight_handler(rest_of_path: str):
-    return {}
-
 # Include routers
 app.include_router(auth.router)
 app.include_router(onboarding.router)
