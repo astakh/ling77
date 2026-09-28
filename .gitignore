@@ -23,6 +23,10 @@ pip-delete-this-directory.txt
 .pytest_cache/
 .ruff_cache/
 
+# Import data
+words.json
+backend/words.json
+
 # IDE
 .vscode/
 .idea/
