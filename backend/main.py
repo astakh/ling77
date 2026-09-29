@@ -1,0 +1,105 @@
+"""
+WordFlow Backend — FastAPI application for spaced repetition language learning.
+"""
+
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+from config import settings as app_settings
+from routes import auth, onboarding, dashboard, lesson, vocabulary, dictionaries
+from routes import admin as admin_router
+from routes import settings as settings_router
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='{"time":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","message":"%(message)s"}',
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting WordFlow backend...")
+    logger.info(f"📋 CORS_ORIGINS: {app_settings.CORS_ORIGINS}")
+    yield
+    logger.info("Shutting down WordFlow backend...")
+
+
+app = FastAPI(
+    title="WordFlow API",
+    description="Spaced repetition language learning platform",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# Захардкоженные CORS origins - НЕ зависят от .env
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
+# Middleware для логирования запросов и CORS
+@app.middleware("http")
+async def add_cors_and_log(request, call_next):
+    logger.info(f"📨 {request.method} {request.url.path} from {request.client.host if request.client else 'unknown'}")
+    
+    # Получаем origin из запроса
+    origin = request.headers.get("origin", "")
+    
+    # Разрешаем любой localhost origin
+    allow_origin = origin if origin else ALLOWED_ORIGINS[0]
+    
+    # Обработка OPTIONS запросов (preflight)
+    if request.method == "OPTIONS":
+        from fastapi.responses import JSONResponse
+        response = JSONResponse(content={"status": "ok"})
+        response.headers["Access-Control-Allow-Origin"] = allow_origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Max-Age"] = "3600"
+        logger.info(f"🔧 OPTIONS preflight → 200 (origin: {origin})")
+        return response
+    
+    try:
+        response = await call_next(request)
+        logger.info(f"📤 {request.method} {request.url.path} → {response.status_code}")
+        # Добавляем CORS заголовки ко всем ответам
+        response.headers["Access-Control-Allow-Origin"] = allow_origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+    except Exception as e:
+        logger.error(f"❌ Error: {e}")
+        raise
+
+# Include routers
+app.include_router(auth.router)
+app.include_router(onboarding.router)
+app.include_router(dashboard.router)
+app.include_router(lesson.router)
+app.include_router(vocabulary.router)
+app.include_router(dictionaries.router)
+app.include_router(settings_router.router)
+app.include_router(admin_router.router)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "wordflow"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+    )

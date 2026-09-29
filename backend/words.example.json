@@ -1,0 +1,20 @@
+[
+  {
+    "lemma": "example",
+    "pos": "noun",
+    "level": "A1",
+    "translations": ["пример", "образец"]
+  },
+  {
+    "lemma": "learn",
+    "pos": "verb",
+    "level": "A1",
+    "translations": ["учить", "учиться"]
+  },
+  {
+    "lemma": "beautiful",
+    "pos": "adjective",
+    "level": "A2",
+    "translations": ["красивый", "прекрасный"]
+  }
+]

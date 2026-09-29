@@ -1,0 +1,62 @@
+from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from typing import Optional, Union
+import json
+
+
+class Settings(BaseSettings):
+    # Database
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/wordflow"
+
+    # JWT
+    SECRET_KEY: str = "change-me-in-production-use-openssl-rand-hex-32"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    ALGORITHM: str = "HS256"
+
+    # GigaChat
+    # Вариант 1: Использовать готовый Authorization Key из личного кабинета
+    GIGACHAT_AUTH_KEY: str = ""
+    # Вариант 2: Или указать Client ID + Client Secret (НЕ Authorization Key!)
+    GIGACHAT_CLIENT_ID: str = ""
+    GIGACHAT_CLIENT_SECRET: str = ""
+    GIGACHAT_AUTH_URL: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
+    GIGACHAT_API_URL: str = "https://gigachat.devices.sberbank.ru/api/v1"
+
+    # CORS - может быть строкой (JSON) или списком
+    CORS_ORIGINS: Union[str, list[str]] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
+
+    # Rate limits
+    AUTH_RATE_LIMIT_PER_MINUTE: int = 10
+    
+    # Admin
+    ADMIN_PASSWORD: str = "admin123"  # Пароль для входа в админку
+
+    @field_validator('CORS_ORIGINS', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            # Пробуем распарсить как JSON
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                # Если не JSON, пробуем разделить по запятой
+                return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+        extra = "ignore"  # Игнорировать неизвестные переменные окружения (например VITE_*)
+
+
+settings = Settings()
+
+# Убеждаемся что CORS_ORIGINS это список
+if isinstance(settings.CORS_ORIGINS, str):
+    settings.CORS_ORIGINS = [settings.CORS_ORIGINS]
