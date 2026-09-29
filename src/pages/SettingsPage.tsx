@@ -58,32 +58,40 @@ export default function SettingsPage() {
     setSuccess(null);
 
     try {
-      await api.settings.update({
+      console.log('📝 Saving settings:', {
         level,
         words_per_lesson: wordsPerLesson,
         lessons_per_day: lessonsPerDay,
         dictionary_id: dictionaryId,
       });
 
+      const response = await api.settings.update({
+        level,
+        words_per_lesson: wordsPerLesson,
+        lessons_per_day: lessonsPerDay,
+        dictionary_id: dictionaryId,
+      });
+
+      console.log('✅ Settings saved:', response);
       setSuccess('Настройки успешно сохранены');
       
       // Обновляем профиль в store
       if (profile) {
-        useStore.setState({
-          profile: {
-            ...profile,
-            level,
-            wordsPerLesson,
-            dailyLessonLimit: lessonsPerDay,
-            dictionaryId,
-          }
-        });
+        const updatedProfile = {
+          ...profile,
+          level,
+          wordsPerLesson,
+          dailyLessonLimit: lessonsPerDay,
+          dictionaryId,
+        };
+        console.log('🔄 Updating profile in store:', updatedProfile);
+        useStore.setState({ profile: updatedProfile });
       }
 
       // Возвращаемся на дашборд через 1 секунду
       setTimeout(() => navigate('/dashboard'), 1000);
     } catch (err: any) {
-      console.error('Failed to save settings:', err);
+      console.error('❌ Failed to save settings:', err);
       setError(err.detail || 'Не удалось сохранить настройки');
     } finally {
       setSaving(false);
