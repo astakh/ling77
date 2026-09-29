@@ -7,8 +7,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from config import settings
-from routes import auth, onboarding, dashboard, lesson, vocabulary, admin, dictionaries, settings
+from config import settings as app_settings
+from routes import auth, onboarding, dashboard, lesson, vocabulary, admin, dictionaries
+from routes import settings as settings_router
 
 # Configure logging
 logging.basicConfig(
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting WordFlow backend...")
-    logger.info(f"📋 CORS_ORIGINS: {settings.CORS_ORIGINS}")
+    logger.info(f"📋 CORS_ORIGINS: {app_settings.CORS_ORIGINS}")
     yield
     logger.info("Shutting down WordFlow backend...")
 
@@ -84,7 +85,7 @@ app.include_router(dashboard.router)
 app.include_router(lesson.router)
 app.include_router(vocabulary.router)
 app.include_router(dictionaries.router)
-app.include_router(settings.router)
+app.include_router(settings_router.router)
 app.include_router(admin.router)
 
 
