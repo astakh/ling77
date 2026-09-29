@@ -447,8 +447,15 @@ async def evaluate_exercise(
             logger.info(f"   Evaluations: {evaluations}")
             logger.info(f"   New suggested words: {new_suggested_words}")
         except Exception as e:
-            logger.error(f"LLM evaluation failed: {e}")
-            raise HTTPException(status_code=503, detail="Сервис временно недоступен. Попробуйте позже.")
+            logger.error(f"❌ LLM evaluation failed: {e}")
+            logger.error(f"   Error type: {type(e).__name__}")
+            logger.error(f"   Exercise ID: {exercise.id}")
+            logger.error(f"   Target sentence: {exercise.target_sentence}")
+            logger.error(f"   User translation: {body.user_translation}")
+            logger.error(f"   Target words: {target_words_data}")
+            import traceback
+            logger.error(f"   Traceback:\n{traceback.format_exc()}")
+            raise HTTPException(status_code=503, detail=f"Сервис временно недоступен. Попробуйте позже. Ошибка: {str(e)}")
 
     # Update exercise
     exercise.user_translation = body.user_translation

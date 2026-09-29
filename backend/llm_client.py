@@ -138,7 +138,16 @@ class GigaChatClient:
                 logger.info(f"   Response length: {len(content)} chars")
 
                 # Parse JSON
-                result = self._parse_json_response(content)
+                logger.info(f"📝 Raw content from LLM:\n{content[:500]}...")
+                try:
+                    result = self._parse_json_response(content)
+                    logger.info(f"✅ JSON parsed successfully")
+                    logger.info(f"   Result type: {type(result)}")
+                    logger.info(f"   Result keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
+                except Exception as e:
+                    logger.error(f"❌ Failed to parse JSON: {e}")
+                    logger.error(f"   Content that failed to parse:\n{content}")
+                    raise
 
                 await self._log_call(db, purpose, user_id, lesson_id, prompt, result, "success", latency_ms, tokens)
                 return result
@@ -146,6 +155,10 @@ class GigaChatClient:
             except Exception as e:
                 last_error = str(e)
                 logger.error(f"❌ GigaChat call failed (attempt {attempt + 1}): {e}")
+                logger.error(f"   Error type: {type(e).__name__}")
+                logger.error(f"   Error message: {str(e)}")
+                import traceback
+                logger.error(f"   Full traceback:\n{traceback.format_exc()}")
                 
                 if attempt < max_retries:
                     logger.info(f"   Retrying in 1 second...")
@@ -271,48 +284,93 @@ class GigaChatClient:
         prompt = _build_evaluate_prompt(
             target_sentence, user_translation, target_words
         )
+        
+        logger.info(f"🔍 Evaluate translation request:")
+        logger.info(f"   Target sentence: {target_sentence}")
+        logger.info(f"   User translation: {user_translation}")
+        logger.info(f"   Target words: {[w['lemma'] for w in target_words]}")
+        logger.info(f"   Prompt length: {len(prompt)} chars")
 
         for attempt in range(2):  # max 1 retry
-            result = await self._call_llm(
-                prompt=prompt,
-                temperature=0.2,
-                purpose="evaluate_translation",
-                db=db,
-                user_id=user_id,
-                lesson_id=lesson_id,
-                max_retries=2,
-            )
+            logger.info(f"🔄 Evaluate attempt {attempt + 1}/2")
+            try:
+                result = await self._call_llm(
+                    prompt=prompt,
+                    temperature=0.2,
+                    purpose="evaluate_translation",
+                    db=db,
+                    user_id=user_id,
+                    lesson_id=lesson_id,
+                    max_retries=2,
+                )
+                
+                logger.info(f"📥 LLM raw response: {result}")
 
-            if self._validate_evaluate_response(result, target_words):
-                return result
-
-            logger.warning(f"Invalid evaluate response, attempt {attempt + 1}")
+                if self._validate_evaluate_response(result, target_words):
+                    logger.info(f"✅ Response validated successfully")
+                    return result
+                else:
+                    logger.warning(f"❌ Response validation failed")
+                    logger.warning(f"   Response type: {type(result)}")
+                    logger.warning(f"   Response keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
+                    logger.warning(f"   Full response: {result}")
+            except Exception as e:
+                logger.error(f"❌ LLM call failed on attempt {attempt + 1}: {e}")
+                logger.error(f"   Error type: {type(e).__name__}")
+                import traceback
+                logger.error(f"   Traceback:\n{traceback.format_exc()}")
+                if attempt == 1:  # last attempt
+                    raise
 
         raise Exception("Failed to evaluate translation after 2 attempts")
 
     def _validate_evaluate_response(self, result: dict, target_words: list[dict]) -> bool:
         """Validate evaluation response."""
+        logger.info(f"🔍 Validating LLM response...")
+        
         if not isinstance(result, dict):
+            logger.warning(f"   ❌ Result is not a dict: {type(result)}")
             return False
-        if "evaluations" not in result or "overall_result" not in result:
+        
+        if "evaluations" not in result:
+            logger.warning(f"   ❌ Missing 'evaluations' key. Keys: {result.keys()}")
             return False
+            
+        if "overall_result" not in result:
+            logger.warning(f"   ❌ Missing 'overall_result' key. Keys: {result.keys()}")
+            return False
+            
         if result["overall_result"] not in ("correct", "typo", "incorrect"):
+            logger.warning(f"   ❌ Invalid overall_result: {result['overall_result']}")
             return False
+            
         if not isinstance(result["evaluations"], list):
+            logger.warning(f"   ❌ 'evaluations' is not a list: {type(result['evaluations'])}")
             return False
+            
         if "new_suggested_words" not in result:
+            logger.warning(f"   ❌ Missing 'new_suggested_words' key. Keys: {result.keys()}")
             return False
+            
         if not isinstance(result["new_suggested_words"], list):
+            logger.warning(f"   ❌ 'new_suggested_words' is not a list: {type(result['new_suggested_words'])}")
             return False
 
-        for ev in result["evaluations"]:
+        for i, ev in enumerate(result["evaluations"]):
             if not isinstance(ev, dict):
+                logger.warning(f"   ❌ Evaluation {i} is not a dict: {type(ev)}")
                 return False
             if ev.get("result") not in ("correct", "typo", "incorrect"):
+                logger.warning(f"   ❌ Evaluation {i} has invalid result: {ev.get('result')}")
                 return False
-            if "word_lemma" not in ev or "user_fragment" not in ev:
+            if "word_lemma" not in ev:
+                logger.warning(f"   ❌ Evaluation {i} missing 'word_lemma'")
+                return False
+            if "user_fragment" not in ev:
+                logger.warning(f"   ❌ Evaluation {i} missing 'user_fragment'")
                 return False
 
+        logger.info(f"   ✅ Validation passed")
         return True
 
 
