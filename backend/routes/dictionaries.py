@@ -18,6 +18,30 @@ from auth import get_current_user, get_current_admin
 router = APIRouter(prefix="/dictionaries", tags=["dictionaries"])
 
 
+@router.get("/profile")
+async def get_profile(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current user's learning profile."""
+    result = await db.execute(
+        select(LearningProfile).where(LearningProfile.user_id == user.id)
+    )
+    profile = result.scalar_one_or_none()
+    
+    if not profile:
+        raise HTTPException(status_code=404, detail="Learning profile not found")
+    
+    return {
+        "user_id": profile.user_id,
+        "level": profile.level,
+        "dictionary_id": profile.dictionary_id,
+        "daily_lesson_limit": profile.daily_lesson_limit,
+        "words_per_lesson": profile.words_per_lesson,
+        "last_lesson_number": profile.last_lesson_number,
+    }
+
+
 @router.get("", response_model=DictionaryListResponse)
 async def list_dictionaries(
     category: str | None = Query(None, description="Filter by category (general, it, travel, business, food, medical, daily)"),
@@ -193,30 +217,6 @@ async def change_profile_dictionary(
         "status": "ok",
         "dictionary_id": dictionary.id,
         "dictionary_name": dictionary.name,
-    }
-
-
-@router.get("/profile")
-async def get_profile(
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get the current user's learning profile."""
-    result = await db.execute(
-        select(LearningProfile).where(LearningProfile.user_id == user.id)
-    )
-    profile = result.scalar_one_or_none()
-    
-    if not profile:
-        raise HTTPException(status_code=404, detail="Learning profile not found")
-    
-    return {
-        "user_id": profile.user_id,
-        "level": profile.level,
-        "dictionary_id": profile.dictionary_id,
-        "daily_lesson_limit": profile.daily_lesson_limit,
-        "words_per_lesson": profile.words_per_lesson,
-        "last_lesson_number": profile.last_lesson_number,
     }
 
 
