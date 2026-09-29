@@ -331,6 +331,8 @@ export default function ExercisePage() {
                 <div className="space-y-3">
                   {resultData.words.map((word: any, idx: number) => {
                     console.log(`Word ${idx}:`, word); // Логируем структуру
+                    // Маппим snake_case из backend в camelCase для frontend
+                    const userFragment = word.user_fragment || word.userFragment;
                     const isCorrect = word.result === 'correct';
                     const isTypo = word.result === 'typo';
                     const isIncorrect = word.result === 'incorrect' || word.result === 'dont_know';
@@ -347,7 +349,7 @@ export default function ExercisePage() {
                           {isIncorrect && <XCircle className="w-4 h-4 text-red-600" />}
                         </div>
                         <div className="flex-1 text-left">
-                          <p className="font-semibold text-gray-800">{word.surfaceForm}</p>
+                          <p className="font-semibold text-gray-800">{word.surface_form || word.surfaceForm}</p>
                           {isCorrect && (
                             <p className="text-sm text-green-600">✓ Правильно</p>
                           )}
@@ -355,7 +357,7 @@ export default function ExercisePage() {
                             <div className="text-sm">
                               <p className="text-amber-600">⚠ Опечатка</p>
                               <p className="text-gray-600 mt-1">
-                                Ваш перевод: <span className="font-medium">{word.userFragment || '—'}</span>
+                                Ваш перевод: <span className="font-medium">{userFragment || '—'}</span>
                               </p>
                               <p className="text-gray-600 mt-1">
                                 Правильный перевод: <span className="font-medium text-green-600">
@@ -367,9 +369,9 @@ export default function ExercisePage() {
                           {isIncorrect && (
                             <div className="text-sm">
                               <p className="text-red-600">✗ Неправильно</p>
-                              {word.userFragment && (
+                              {userFragment && (
                                 <p className="text-gray-600 mt-1">
-                                  Ваш перевод: <span className="font-medium text-red-500">{word.userFragment}</span>
+                                  Ваш перевод: <span className="font-medium text-red-500">{userFragment}</span>
                                 </p>
                               )}
                               <p className="text-gray-600 mt-1">
@@ -400,6 +402,7 @@ export default function ExercisePage() {
                   <p className="text-sm text-blue-700 mb-3">Эти слова встретились в предложении, но вы их не перевели. Выберите слова для добавления в словарь:</p>
                   <div className="space-y-2 mb-4">
                     {availableWords.map((wordObj: any, idx: number) => {
+                      console.log(`New suggested word ${idx}:`, wordObj);
                       return (
                         <label key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
                           <input

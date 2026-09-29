@@ -114,6 +114,7 @@ class ExerciseWordResponse(BaseModel):
     surface_form: str
     translation: Optional[str] = None
     result: Optional[str] = None
+    user_fragment: Optional[str] = None
     stage_before: int
     stage_after: int
 
