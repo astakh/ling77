@@ -25,7 +25,6 @@ from schemas import (
 from auth import get_current_user
 from srs import calculate_new_stage, calculate_due_lesson_number, is_due, is_mastered
 from llm_client import gigachat_client
-from exercise_generator import generate_exercises_fallback, _fallback_evaluate_translation
 
 logger = logging.getLogger(__name__)
 
@@ -240,7 +239,7 @@ async def start_lesson(
         clusters.append({"words": cluster})
         i += cluster_size
 
-    # LLM Generation (with fallback)
+    # LLM Generation
     try:
         llm_results = await gigachat_client.generate_exercises(
             word_clusters=clusters,
@@ -250,10 +249,8 @@ async def start_lesson(
         )
         logger.info(f"✅ Generated {len(llm_results)} exercises using GigaChat LLM")
     except Exception as e:
-        logger.warning(f"⚠️ LLM generation failed: {e}. Using fallback generator.")
-        # Fallback to local generation without LLM
-        llm_results = generate_exercises_fallback(clusters, profile.level)
-        logger.info(f"✅ Generated {len(llm_results)} exercises using fallback (no LLM)")
+        logger.error(f"LLM generation failed: {e}")
+        raise HTTPException(status_code=503, detail="Сервис временно недоступен. Попробуйте позже.")
 
     # Create lesson
     next_lesson_number = profile.last_lesson_number + 1
@@ -429,7 +426,7 @@ async def evaluate_exercise(
             for _, word in target_word_rows
         ]
     else:
-        # Call LLM (with fallback)
+        # Call LLM
         try:
             llm_result = await gigachat_client.evaluate_translation(
                 target_sentence=exercise.target_sentence,
@@ -444,14 +441,8 @@ async def evaluate_exercise(
             evaluations = llm_result["evaluations"]
             logger.info(f"✅ Translation evaluated using GigaChat LLM")
         except Exception as e:
-            logger.warning(f"⚠️ LLM evaluation failed: {e}. Using fallback evaluation.")
-            # Fallback: simple keyword matching evaluation
-            overall_result, evaluations = _fallback_evaluate_translation(
-                body.user_translation,
-                exercise.reference_translation,
-                target_words_data
-            )
-            logger.info(f"✅ Translation evaluated using fallback (no LLM)")
+            logger.error(f"LLM evaluation failed: {e}")
+            raise HTTPException(status_code=503, detail="Сервис временно недоступен. Попробуйте позже.")
 
     # Update exercise
     exercise.user_translation = body.user_translation

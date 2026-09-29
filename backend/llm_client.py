@@ -51,6 +51,20 @@ class GigaChatToken:
 
     async def _refresh(self):
         """Fetch new token from GigaChat OAuth."""
+        import base64
+        import uuid
+        
+        # Проверка что credentials настроены
+        if not settings.GIGACHAT_CLIENT_ID or not settings.GIGACHAT_CLIENT_SECRET:
+            raise Exception("GigaChat credentials not configured. Set GIGACHAT_CLIENT_ID and GIGACHAT_CLIENT_SECRET in .env")
+        
+        # Формируем Authorization key: base64(ClientID:ClientSecret)
+        credentials = f"{settings.GIGACHAT_CLIENT_ID}:{settings.GIGACHAT_CLIENT_SECRET}"
+        auth_key = base64.b64encode(credentials.encode()).decode()
+        
+        # Генерируем UUIDv4 для RqUID
+        rq_uid = str(uuid.uuid4())
+        
         async with httpx.AsyncClient(verify=False) as client:
             response = await client.post(
                 settings.GIGACHAT_AUTH_URL,
@@ -60,8 +74,8 @@ class GigaChatToken:
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Accept": "application/json",
-                    "RqUID": secrets.token_hex(16),
-                    "Authorization": f"Basic {settings.GIGACHAT_CLIENT_SECRET}",
+                    "RqUID": rq_uid,
+                    "Authorization": f"Basic {auth_key}",
                 },
                 timeout=10.0,
             )

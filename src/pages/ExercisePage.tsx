@@ -63,8 +63,14 @@ export default function ExercisePage() {
       setCurrentResult(result.result);
       setResultData(result);
       setShowResult(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to evaluate:', error);
+      // Показываем понятное сообщение пользователю
+      if (error.status === 503) {
+        alert('Сервис временно недоступен. Попробуйте позже. Ваш перевод сохранён.');
+      } else {
+        alert(`Ошибка: ${error.detail || 'Не удалось проверить перевод'}`);
+      }
     }
   };
 
@@ -74,8 +80,14 @@ export default function ExercisePage() {
       setCurrentResult('dont_know');
       setResultData(result);
       setShowResult(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to evaluate:', error);
+      // Показываем понятное сообщение пользователю
+      if (error.status === 503) {
+        alert('Сервис временно недоступен. Попробуйте позже.');
+      } else {
+        alert(`Ошибка: ${error.detail || 'Не удалось оценить упражнение'}`);
+      }
     }
   };
 

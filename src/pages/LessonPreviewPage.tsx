@@ -35,8 +35,14 @@ export default function LessonPreviewPage() {
     try {
       await startLesson();
       navigate('/lesson/exercise');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start lesson:', error);
+      // Показываем понятное сообщение пользователю
+      if (error.status === 503) {
+        alert('Сервис временно недоступен. Попробуйте позже.');
+      } else {
+        alert(`Ошибка: ${error.detail || 'Не удалось начать урок'}`);
+      }
     }
   };
 
