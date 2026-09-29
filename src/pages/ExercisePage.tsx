@@ -328,7 +328,7 @@ export default function ExercisePage() {
             {resultData && resultData.words && resultData.words.length > 0 && (
               <div className="bg-white rounded-xl p-4 border border-gray-200 w-full mb-6">
                 <p className="text-xs text-gray-500 uppercase tracking-wide mb-3 font-medium">📝 Оценка слов</p>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {resultData.words.map((word: any, idx: number) => {
                     console.log(`Word ${idx}:`, word); // Логируем структуру
                     // Маппим snake_case из backend в camelCase для frontend
@@ -338,47 +338,45 @@ export default function ExercisePage() {
                     const isIncorrect = word.result === 'incorrect' || word.result === 'dont_know';
                     
                     return (
-                      <div key={idx} className="flex items-start gap-3">
-                        <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
-                          isCorrect ? 'bg-green-100' :
-                          isTypo ? 'bg-amber-100' :
-                          'bg-red-100'
-                        }`}>
-                          {isCorrect && <CheckCircle className="w-4 h-4 text-green-600" />}
-                          {isTypo && <AlertTriangle className="w-4 h-4 text-amber-600" />}
-                          {isIncorrect && <XCircle className="w-4 h-4 text-red-600" />}
+                      <div key={idx} className="border-b border-gray-100 last:border-b-0 pb-2 last:pb-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
+                            isCorrect ? 'bg-green-100' :
+                            isTypo ? 'bg-amber-100' :
+                            'bg-red-100'
+                          }`}>
+                            {isCorrect && <CheckCircle className="w-3 h-3 text-green-600" />}
+                            {isTypo && <AlertTriangle className="w-3 h-3 text-amber-600" />}
+                            {isIncorrect && <XCircle className="w-3 h-3 text-red-600" />}
+                          </div>
+                          <span className="font-semibold text-gray-800">{word.surface_form || word.surfaceForm}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            isCorrect ? 'bg-green-100 text-green-700' :
+                            isTypo ? 'bg-amber-100 text-amber-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {isCorrect && '✓ Правильно'}
+                            {isTypo && '⚠ Опечатка'}
+                            {isIncorrect && '✗ Неправильно'}
+                          </span>
                         </div>
-                        <div className="flex-1 text-left">
-                          <p className="font-semibold text-gray-800">{word.surface_form || word.surfaceForm}</p>
-                          {isCorrect && (
-                            <p className="text-sm text-green-600">✓ Правильно</p>
-                          )}
-                          {isTypo && (
-                            <div className="text-sm">
-                              <p className="text-amber-600">⚠ Опечатка</p>
-                              <p className="text-gray-600 mt-1">
-                                Ваш перевод: <span className="font-medium">{userFragment || '—'}</span>
-                              </p>
-                              <p className="text-gray-600 mt-1">
-                                Правильный перевод: <span className="font-medium text-green-600">
-                                  {word.translation || '—'}
-                                </span>
-                              </p>
-                            </div>
-                          )}
-                          {isIncorrect && (
-                            <div className="text-sm">
-                              <p className="text-red-600">✗ Неправильно</p>
-                              {userFragment && (
-                                <p className="text-gray-600 mt-1">
-                                  Ваш перевод: <span className="font-medium text-red-500">{userFragment}</span>
-                                </p>
-                              )}
-                              <p className="text-gray-600 mt-1">
-                                Правильный перевод: <span className="font-medium text-green-600">
-                                  {word.translation || '—'}
-                                </span>
-                              </p>
+                        <div className="flex items-center gap-4 text-sm ml-7">
+                          <div className="flex-1">
+                            <span className="text-gray-500">Перевод пользователя: </span>
+                            <span className={`font-medium ${
+                              isCorrect ? 'text-green-600' :
+                              isTypo ? 'text-amber-600' :
+                              'text-red-500'
+                            }`}>
+                              {userFragment || '—'}
+                            </span>
+                          </div>
+                          {!isCorrect && (
+                            <div className="flex-1">
+                              <span className="text-gray-500">Правильный перевод: </span>
+                              <span className="font-medium text-green-600">
+                                {word.translation || '—'}
+                              </span>
                             </div>
                           )}
                         </div>
