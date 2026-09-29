@@ -216,6 +216,7 @@ export const api = {
         exercise_id: number;
         result: 'correct' | 'typo' | 'incorrect';
         words: any[];
+        user_translation: string;
         reference_translation: string;
         is_last: boolean;
         new_suggested_words: Array<{ word: string; translation: string }>;

@@ -318,6 +318,14 @@ export default function ExercisePage() {
               );
             })()}
 
+            {/* Show user's translation */}
+            {resultData && resultData.userTranslation && (
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 w-full mb-4">
+                <p className="text-xs text-blue-600 uppercase tracking-wide mb-1 font-medium">Ваш перевод</p>
+                <p className="text-gray-800 font-medium">{resultData.userTranslation}</p>
+              </div>
+            )}
+
             {/* Show correct answer */}
             {resultData && (
               <div className="bg-white rounded-xl p-4 border border-gray-200 w-full mb-6">

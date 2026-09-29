@@ -133,6 +133,7 @@ class EvaluateResponse(BaseModel):
     exercise_id: int
     result: Literal["correct", "typo", "incorrect"]
     words: list["ExerciseWordResponse"]
+    user_translation: str
     reference_translation: str
     is_last: bool
     new_suggested_words: list[NewSuggestedWord] = []

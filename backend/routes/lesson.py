@@ -615,6 +615,7 @@ async def evaluate_exercise(
         exercise_id=exercise.id,
         result=overall_result,
         words=exercise_words_response,
+        user_translation=body.user_translation,
         reference_translation=exercise.reference_translation,
         is_last=is_last,
         new_suggested_words=filtered_new_suggested_words,

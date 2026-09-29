@@ -397,6 +397,7 @@ export const useStore = create<AppState>((set, get) => ({
         result: response.result,
         words: response.words,
         isLast: response.is_last,
+        userTranslation: response.user_translation,
         referenceTranslation: response.reference_translation,
         newSuggestedWords: response.new_suggested_words || [],
       };
