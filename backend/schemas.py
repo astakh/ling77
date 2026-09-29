@@ -209,6 +209,13 @@ class ChangeDictionaryRequest(BaseModel):
     dictionary_id: int
 
 
+class SettingsUpdateRequest(BaseModel):
+    level: Optional[str] = None
+    words_per_lesson: Optional[int] = None
+    lessons_per_day: Optional[int] = None
+    dictionary_id: Optional[int] = None
+
+
 # ============ Admin ============
 
 class DictionaryImportRequest(BaseModel):

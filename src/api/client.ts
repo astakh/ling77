@@ -273,6 +273,20 @@ export const api = {
         }
       ),
   },
+
+  // Settings
+  settings: {
+    update: (settings: {
+      level: string;
+      words_per_lesson: number;
+      lessons_per_day: number;
+      dictionary_id: number;
+    }) =>
+      request<{ status: string }>('/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(settings),
+      }),
+  },
 };
 
 export { ApiError };

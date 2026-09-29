@@ -9,6 +9,7 @@ import ExercisePage from './pages/ExercisePage';
 import LessonSummaryPage from './pages/LessonSummaryPage';
 import VocabularyPage from './pages/VocabularyPage';
 import DictionariesPage from './pages/DictionariesPage';
+import SettingsPage from './pages/SettingsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useStore();
@@ -88,6 +89,11 @@ function App() {
         <Route path="/dictionaries" element={
           <ProtectedRoute>
             <DictionariesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <SettingsPage />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/auth"} replace />} />

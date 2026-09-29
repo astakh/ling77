@@ -34,6 +34,7 @@ class LearningProfile(Base):
     level = Column(String(2), nullable=False)  # A1, A2, B1, B2
     dictionary_id = Column(Integer, ForeignKey("dictionaries.id"), nullable=True)
     daily_lesson_limit = Column(Integer, nullable=False, default=5)
+    words_per_lesson = Column(Integer, nullable=False, default=8)
     last_lesson_number = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

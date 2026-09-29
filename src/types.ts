@@ -58,6 +58,7 @@ export interface LearningProfile {
   level: Level;
   dictionaryId: number | null;
   dailyLessonLimit: number;
+  wordsPerLesson: number;
   lastLessonNumber: number;
   userWords: UserWord[];
 }

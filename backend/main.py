@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from config import settings
-from routes import auth, onboarding, dashboard, lesson, vocabulary, admin, dictionaries
+from routes import auth, onboarding, dashboard, lesson, vocabulary, admin, dictionaries, settings
 
 # Configure logging
 logging.basicConfig(
@@ -84,6 +84,7 @@ app.include_router(dashboard.router)
 app.include_router(lesson.router)
 app.include_router(vocabulary.router)
 app.include_router(dictionaries.router)
+app.include_router(settings.router)
 app.include_router(admin.router)
 
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
-import { Flame, BookOpen, Brain, Target, Play, Clock, LogOut, List, Library } from 'lucide-react';
+import { Flame, BookOpen, Brain, Target, Play, Clock, LogOut, List, Library, Settings } from 'lucide-react';
 import { DashboardSummary } from '../types';
 
 export default function DashboardPage() {
@@ -82,6 +82,13 @@ export default function DashboardPage() {
               title="Мои слова"
             >
               <List className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => navigate('/settings')}
+              className="p-2 text-gray-500 hover:text-indigo-600 transition"
+              title="Настройки"
+            >
+              <Settings className="w-5 h-5" />
             </button>
             <button
               onClick={handleLogout}
