@@ -358,23 +358,26 @@ export default function ExercisePage() {
                           </span>
                         </div>
                         
-                        {/* Если неправильно - показываем переводы */}
-                        {!isCorrect && (
+                        {/* Показываем переводы */}
+                        {userFragment && (
                           <div className="mt-2 space-y-1">
                             <div className="text-sm">
                               <span className="text-gray-500">Ваш перевод: </span>
                               <span className={`font-medium ${
+                                isCorrect ? 'text-green-600' :
                                 isTypo ? 'text-amber-600' : 'text-red-500'
                               }`}>
-                                {userFragment || '—'}
+                                {userFragment}
                               </span>
                             </div>
-                            <div className="text-sm">
-                              <span className="text-gray-500">Правильный перевод: </span>
-                              <span className="font-medium text-green-600">
-                                {word.translation || '—'}
-                              </span>
-                            </div>
+                            {!isCorrect && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">Правильный перевод: </span>
+                                <span className="font-medium text-green-600">
+                                  {word.translation || '—'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
