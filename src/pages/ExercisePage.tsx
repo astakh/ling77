@@ -325,11 +325,12 @@ export default function ExercisePage() {
             )}
 
             {/* Target words evaluation */}
-            {resultData && resultData.words && (
+            {resultData && resultData.words && resultData.words.length > 0 && (
               <div className="bg-white rounded-xl p-4 border border-gray-200 w-full mb-6">
                 <p className="text-xs text-gray-500 uppercase tracking-wide mb-3 font-medium">📝 Оценка слов</p>
                 <div className="space-y-3">
                   {resultData.words.map((word: any, idx: number) => {
+                    console.log(`Word ${idx}:`, word); // Логируем структуру
                     const isCorrect = word.result === 'correct';
                     const isTypo = word.result === 'typo';
                     const isIncorrect = word.result === 'incorrect' || word.result === 'dont_know';
@@ -356,6 +357,11 @@ export default function ExercisePage() {
                               <p className="text-gray-600 mt-1">
                                 Ваш перевод: <span className="font-medium">{word.userFragment || '—'}</span>
                               </p>
+                              <p className="text-gray-600 mt-1">
+                                Правильный перевод: <span className="font-medium text-green-600">
+                                  {word.translation || '—'}
+                                </span>
+                              </p>
                             </div>
                           )}
                           {isIncorrect && (
@@ -368,7 +374,7 @@ export default function ExercisePage() {
                               )}
                               <p className="text-gray-600 mt-1">
                                 Правильный перевод: <span className="font-medium text-green-600">
-                                  {exercise.words.find(w => w.wordId === word.wordId)?.surfaceForm || '—'}
+                                  {word.translation || '—'}
                                 </span>
                               </p>
                             </div>

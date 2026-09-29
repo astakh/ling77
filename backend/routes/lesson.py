@@ -295,6 +295,7 @@ async def start_lesson(
                 is_target=True,
                 is_new=word_data["is_new"],
                 surface_form=word_data["lemma"],
+                translation=word_data["translations"][0] if word_data.get("translations") else None,
                 stage_before=word_data["stage"],
                 stage_after=word_data["stage"],
             ))
@@ -368,6 +369,13 @@ async def evaluate_exercise(
         )
         exercise_words = result.scalars().all()
 
+        # Load Word objects to get translations
+        word_ids = [ew.word_id for ew in exercise_words if ew.is_target]
+        words_result = await db.execute(
+            select(Word).where(Word.id.in_(word_ids))
+        )
+        words_map = {w.id: w for w in words_result.scalars().all()}
+
         # Check if this is the last exercise
         result = await db.execute(
             select(func.count(LessonExercise.id)).where(
@@ -386,6 +394,7 @@ async def evaluate_exercise(
                     is_target=ew.is_target,
                     is_new=ew.is_new,
                     surface_form=ew.surface_form,
+                    translation=words_map[ew.word_id].translations[0] if ew.word_id in words_map and words_map[ew.word_id].translations else None,
                     result=ew.result,
                     stage_before=ew.stage_before,
                     stage_after=ew.stage_after,
