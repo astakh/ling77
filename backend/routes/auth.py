@@ -113,11 +113,12 @@ async def login(
     await db.flush()
 
     # Set refresh token as httpOnly cookie
+    logger.info(f"🍪 Setting refresh token cookie for user {user.id}")
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=False,  # False для разработки (localhost), True для production (HTTPS)
         samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
     )
@@ -131,12 +132,19 @@ async def refresh(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    logger.info("🔄 Refresh token request received")
+    
     # Get refresh token from cookie
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
+        logger.warning("❌ No refresh token in cookies")
+        logger.info(f"   Available cookies: {list(request.cookies.keys())}")
         raise HTTPException(status_code=401, detail="No refresh token")
+    
+    logger.info(f"✅ Refresh token found (length: {len(refresh_token)})")
 
     token_hash = hash_refresh_token(refresh_token)
+    logger.info(f"   Token hash: {token_hash[:20]}...")
 
     # Find token
     result = await db.execute(
@@ -148,10 +156,14 @@ async def refresh(
     old_rt = result.scalar_one_or_none()
 
     if not old_rt:
+        logger.error("❌ Invalid refresh token (not found in DB or already revoked)")
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     if old_rt.expires_at < datetime.utcnow():
+        logger.error(f"❌ Refresh token expired at {old_rt.expires_at}")
         raise HTTPException(status_code=401, detail="Refresh token expired")
+    
+    logger.info(f"✅ Valid refresh token found for user {old_rt.user_id}")
 
     # Check for token reuse (potential theft)
     # If this token was already used, revoke entire family
@@ -173,11 +185,12 @@ async def refresh(
     db.add(new_rt)
     await db.flush()
 
+    logger.info(f"🍪 Setting new refresh token cookie for user {old_rt.user_id}")
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=True,
+        secure=False,  # False для разработки (localhost), True для production (HTTPS)
         samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
     )

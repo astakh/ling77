@@ -25,15 +25,22 @@ function onRefreshed(token: string) {
 }
 
 async function refreshToken(): Promise<string> {
+  console.log('🔄 Attempting to refresh token...');
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: 'POST',
+    credentials: 'include', // Важно: передаём cookies с refresh token
   });
 
+  console.log(`🔄 Refresh response: ${response.status}`);
+
   if (!response.ok) {
-    throw new ApiError(response.status, 'Refresh failed');
+    const errorData = await response.json().catch(() => ({ detail: 'Refresh failed' }));
+    console.error('❌ Refresh failed:', errorData);
+    throw new ApiError(response.status, errorData.detail || 'Refresh failed');
   }
 
   const data = await response.json();
+  console.log('✅ Token refreshed successfully');
   return data.access_token;
 }
 
@@ -57,6 +64,7 @@ async function request<T>(
   let response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include', // Важно: передаём cookies
   });
 
   console.log(`📥 API Response: ${response.status} ${response.statusText} from ${url}`);
@@ -76,6 +84,7 @@ async function request<T>(
         response = await fetch(url, {
           ...options,
           headers,
+          credentials: 'include',
         });
       } catch {
         isRefreshing = false;
