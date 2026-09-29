@@ -1,6 +1,6 @@
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, X, Play, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Check, Play, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function LessonPreviewPage() {
@@ -101,7 +101,7 @@ export default function LessonPreviewPage() {
         )}
 
         <p className="text-sm text-gray-500 mb-4">
-          В этом уроке {preview.words.length} слов. Нажмите ✕ чтобы пропустить слово.
+          В этом уроке {preview.words.length} слов. Нажмите ✓ если уже знаете слово.
         </p>
 
         <div className="space-y-3 mb-6">
@@ -125,17 +125,19 @@ export default function LessonPreviewPage() {
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">повтор</span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    {word.translations.join(', ')}
-                  </div>
+                  {!word.isDue && (
+                    <div className="text-sm text-gray-500 mt-1">
+                      {word.translations.join(', ')}
+                    </div>
+                  )}
                 </div>
                 {!declinedWords.includes(word.id) && (
                   <button
                     onClick={() => handleDecline(word.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 transition"
-                    title="Пропустить слово"
+                    className="p-1.5 text-gray-400 hover:text-green-500 transition"
+                    title="Знаю слово"
                   >
-                    <X className="w-4 h-4" />
+                    <Check className="w-4 h-4" />
                   </button>
                 )}
               </div>
