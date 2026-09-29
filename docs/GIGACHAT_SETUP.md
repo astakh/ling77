@@ -33,18 +33,34 @@ GigaChat - это LLM (Large Language Model) от Сбера, которая и�
 
 ### Шаг 4: Настройка .env
 
-Откройте `backend/.env` и добавьте:
+Откройте `backend/.env` и добавьте **Authorization Key** (рекомендуется):
 
 ```env
-# GigaChat API credentials
+# GigaChat API - Authorization Key из личного кабинета
+GIGACHAT_AUTH_KEY=your-authorization-key-from-studio
+```
+
+**ИЛИ** используйте Client ID + Client Secret (НЕ Authorization Key!):
+
+```env
+# GigaChat API - Client ID и Client Secret
 GIGACHAT_CLIENT_ID=your-client-id-here
 GIGACHAT_CLIENT_SECRET=your-client-secret-here
 ```
 
-**Пример:**
+**⚠️ ВАЖНО:** 
+- **Authorization Key** — это готовый ключ из личного кабинета (уже base64)
+- **Client Secret** — это отдельный ключ (НЕ base64, НЕ Authorization Key!)
+- Не путайте их! Если положите Authorization Key в `GIGACHAT_CLIENT_SECRET`, получите ошибку `Can't decode 'Authorization' header`
+
+**Пример правильного `.env`:**
 ```env
-GIGACHAT_CLIENT_ID=12345678-1234-1234-1234-123456789012
-GIGACHAT_CLIENT_SECRET=abcdef12-3456-7890-abcd-ef1234567890:abcdef1234567890abcdef1234567890
+# Вариант 1 (рекомендуется):
+GIGACHAT_AUTH_KEY=01a07acf-911d-76cc-a7d4-36d5190004f5:MDfhMDdhY2Yt...
+
+# Вариант 2:
+GIGACHAT_CLIENT_ID=01a07acf-911d-76cc-a7d4-36d5190004f5
+GIGACHAT_CLIENT_SECRET=MDfhMDdhY2Yt...
 ```
 
 ## 🔧 Как это работает

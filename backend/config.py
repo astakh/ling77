@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     # GigaChat
+    # Вариант 1: Использовать готовый Authorization Key из личного кабинета
+    GIGACHAT_AUTH_KEY: str = ""
+    # Вариант 2: Или указать Client ID + Client Secret (НЕ Authorization Key!)
     GIGACHAT_CLIENT_ID: str = ""
     GIGACHAT_CLIENT_SECRET: str = ""
     GIGACHAT_AUTH_URL: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"

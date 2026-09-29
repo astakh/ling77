@@ -54,16 +54,26 @@ class GigaChatToken:
         import base64
         import uuid
         
-        # Проверка что credentials настроены
-        if not settings.GIGACHAT_CLIENT_ID or not settings.GIGACHAT_CLIENT_SECRET:
+        # Определяем какой вариант credentials использовать
+        auth_key = None
+        
+        # Вариант 1: Готовый Authorization Key из личного кабинета
+        if settings.GIGACHAT_AUTH_KEY:
+            logger.info("🔑 Using GIGACHAT_AUTH_KEY from .env")
+            auth_key = settings.GIGACHAT_AUTH_KEY
+        # Вариант 2: Client ID + Client Secret
+        elif settings.GIGACHAT_CLIENT_ID and settings.GIGACHAT_CLIENT_SECRET:
+            logger.info("🔑 Using GIGACHAT_CLIENT_ID + GIGACHAT_CLIENT_SECRET from .env")
+            credentials = f"{settings.GIGACHAT_CLIENT_ID}:{settings.GIGACHAT_CLIENT_SECRET}"
+            auth_key = base64.b64encode(credentials.encode()).decode()
+        else:
             logger.error("❌ GigaChat credentials not configured!")
+            logger.error("   Вариант 1: Укажите GIGACHAT_AUTH_KEY в .env")
+            logger.error("   Вариант 2: Укажите GIGACHAT_CLIENT_ID и GIGACHAT_CLIENT_SECRET в .env")
+            logger.error(f"   GIGACHAT_AUTH_KEY: {'SET' if settings.GIGACHAT_AUTH_KEY else 'NOT SET'}")
             logger.error(f"   GIGACHAT_CLIENT_ID: {settings.GIGACHAT_CLIENT_ID or 'NOT SET'}")
             logger.error(f"   GIGACHAT_CLIENT_SECRET: {'SET' if settings.GIGACHAT_CLIENT_SECRET else 'NOT SET'}")
-            raise Exception("GigaChat credentials not configured. Set GIGACHAT_CLIENT_ID and GIGACHAT_CLIENT_SECRET in .env")
-        
-        # Формируем Authorization key: base64(ClientID:ClientSecret)
-        credentials = f"{settings.GIGACHAT_CLIENT_ID}:{settings.GIGACHAT_CLIENT_SECRET}"
-        auth_key = base64.b64encode(credentials.encode()).decode()
+            raise Exception("GigaChat credentials not configured")
         
         # Генерируем UUIDv4 для RqUID
         rq_uid = str(uuid.uuid4())
@@ -71,8 +81,8 @@ class GigaChatToken:
         logger.info(f"🔑 Requesting GigaChat token...")
         logger.info(f"   URL: {settings.GIGACHAT_AUTH_URL}")
         logger.info(f"   RqUID: {rq_uid}")
-        logger.info(f"   Client ID: {settings.GIGACHAT_CLIENT_ID[:8]}...")
         logger.info(f"   Auth Key (first 20 chars): {auth_key[:20]}...")
+        logger.info(f"   Auth Key length: {len(auth_key)} chars")
         
         async with httpx.AsyncClient(verify=False) as client:
             try:
@@ -114,7 +124,6 @@ class GigaChatToken:
             except httpx.HTTPStatusError as e:
                 logger.error(f"❌ HTTP error during GigaChat OAuth: {e}")
                 logger.error(f"   Request URL: {e.request.url}")
-                logger.error(f"   Request headers: {dict(e.request.headers)}")
                 logger.error(f"   Response status: {e.response.status_code}")
                 logger.error(f"   Response body: {e.response.text[:500]}")
                 raise
