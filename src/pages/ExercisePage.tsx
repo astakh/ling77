@@ -16,6 +16,7 @@ export default function ExercisePage() {
   const [showAbandonModal, setShowAbandonModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
+  const [selectedNewWords, setSelectedNewWords] = useState<Set<string>>(new Set());
 
   // Load current lesson if not in store
   useEffect(() => {
@@ -112,12 +113,39 @@ export default function ExercisePage() {
     setCurrentResult(null);
     setExerciseDraft('');
     setResultData(null);
+    setSelectedNewWords(new Set());
 
     if (isLastExercise) {
       completeLesson();
       navigate('/lesson/summary');
     } else {
       nextExercise();
+    }
+  };
+
+  const handleToggleWord = (word: string) => {
+    setSelectedNewWords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(word)) {
+        newSet.delete(word);
+      } else {
+        newSet.add(word);
+      }
+      return newSet;
+    });
+  };
+
+  const handleAddSelectedWords = async () => {
+    if (selectedNewWords.size === 0) return;
+    
+    try {
+      // TODO: Implement API call to add words to user's dictionary
+      console.log('Adding words to dictionary:', Array.from(selectedNewWords));
+      alert(`Добавлено слов: ${selectedNewWords.size}`);
+      setSelectedNewWords(new Set());
+    } catch (error) {
+      console.error('Failed to add words:', error);
+      alert('Не удалось добавить слова в словарь');
     }
   };
 
@@ -266,22 +294,89 @@ export default function ExercisePage() {
               </div>
             )}
 
-            {/* Show new suggested words */}
+            {/* Target words evaluation */}
+            {resultData && resultData.words && (
+              <div className="bg-white rounded-xl p-4 border border-gray-200 w-full mb-6">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-3 font-medium">📝 Оценка слов</p>
+                <div className="space-y-3">
+                  {resultData.words.map((word: any, idx: number) => {
+                    const isCorrect = word.result === 'correct';
+                    const isTypo = word.result === 'typo';
+                    const isIncorrect = word.result === 'incorrect' || word.result === 'dont_know';
+                    
+                    return (
+                      <div key={idx} className="flex items-start gap-3">
+                        <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                          isCorrect ? 'bg-green-100' :
+                          isTypo ? 'bg-amber-100' :
+                          'bg-red-100'
+                        }`}>
+                          {isCorrect && <CheckCircle className="w-4 h-4 text-green-600" />}
+                          {isTypo && <AlertTriangle className="w-4 h-4 text-amber-600" />}
+                          {isIncorrect && <XCircle className="w-4 h-4 text-red-600" />}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="font-semibold text-gray-800">{word.surfaceForm}</p>
+                          {isCorrect && (
+                            <p className="text-sm text-green-600">✓ Правильно</p>
+                          )}
+                          {isTypo && (
+                            <div className="text-sm">
+                              <p className="text-amber-600">⚠ Опечатка</p>
+                              <p className="text-gray-600 mt-1">
+                                Ваш перевод: <span className="font-medium">{word.userFragment || '—'}</span>
+                              </p>
+                            </div>
+                          )}
+                          {isIncorrect && (
+                            <div className="text-sm">
+                              <p className="text-red-600">✗ Неправильно</p>
+                              {word.userFragment && (
+                                <p className="text-gray-600 mt-1">
+                                  Ваш перевод: <span className="font-medium text-red-500">{word.userFragment}</span>
+                                </p>
+                              )}
+                              <p className="text-gray-600 mt-1">
+                                Правильный перевод: <span className="font-medium text-green-600">
+                                  {exercise.words.find(w => w.wordId === word.wordId)?.surfaceForm || '—'}
+                                </span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* New suggested words with checkboxes */}
             {resultData && resultData.newSuggestedWords && resultData.newSuggestedWords.length > 0 && (
               <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 w-full mb-6">
-                <p className="text-xs text-blue-600 uppercase tracking-wide mb-2 font-medium">💡 Слова для изучения</p>
-                <p className="text-sm text-blue-700 mb-2">Эти слова встретились в предложении, но вы их не перевели:</p>
-                <div className="flex flex-wrap gap-2">
+                <p className="text-xs text-blue-600 uppercase tracking-wide mb-2 font-medium">💡 Добавить в словарь</p>
+                <p className="text-sm text-blue-700 mb-3">Эти слова встретились в предложении, но вы их не перевели. Выберите слова для добавления в словарь:</p>
+                <div className="space-y-2 mb-4">
                   {resultData.newSuggestedWords.map((word: string, idx: number) => (
-                    <span
-                      key={idx}
-                      className="bg-white px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 border border-blue-200"
-                    >
-                      {word}
-                    </span>
+                    <label key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
+                      <input
+                        type="checkbox"
+                        checked={selectedNewWords.has(word)}
+                        onChange={() => handleToggleWord(word)}
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-800">{word}</span>
+                    </label>
                   ))}
                 </div>
-                <p className="text-xs text-blue-600 mt-2">Они будут добавлены в ваш словарь для повторения</p>
+                {selectedNewWords.size > 0 && (
+                  <button
+                    onClick={handleAddSelectedWords}
+                    className="w-full py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Добавить выбранные слова ({selectedNewWords.size})
+                  </button>
+                )}
               </div>
             )}
 
