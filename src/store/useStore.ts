@@ -189,8 +189,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   getDashboardSummary: async () => {
+    console.log('📊 getDashboardSummary: Loading dashboard summary');
+    console.log('📊 getDashboardSummary: Current profile:', get().profile);
     try {
       const summary = await api.dashboard.summary();
+      console.log('📊 getDashboardSummary: Backend response:', summary);
       const result: DashboardSummary = {
         cta: summary.cta,
         streak: summary.streak,

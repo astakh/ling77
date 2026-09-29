@@ -17,10 +17,14 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, profile } = useStore();
   
+  console.log('🔍 SettingsPage: Current profile from store:', profile);
+  
   const [level, setLevel] = useState<Level>(profile?.level || 'A1');
   const [wordsPerLesson, setWordsPerLesson] = useState(profile?.wordsPerLesson || 8);
   const [lessonsPerDay, setLessonsPerDay] = useState(profile?.dailyLessonLimit || 5);
   const [dictionaryId, setDictionaryId] = useState<number | null>(profile?.dictionaryId || null);
+  
+  console.log('🔍 SettingsPage: Initial state:', { level, wordsPerLesson, lessonsPerDay, dictionaryId });
   
   const [dictionaries, setDictionaries] = useState<Dictionary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,8 +33,20 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('🔍 SettingsPage: useEffect - loading dictionaries');
     loadDictionaries();
   }, []);
+  
+  // Обновляем состояние когда profile меняется
+  useEffect(() => {
+    if (profile) {
+      console.log('🔍 SettingsPage: Profile changed, updating state:', profile);
+      setLevel(profile.level);
+      setWordsPerLesson(profile.wordsPerLesson);
+      setLessonsPerDay(profile.dailyLessonLimit);
+      setDictionaryId(profile.dictionaryId);
+    }
+  }, [profile]);
 
   const loadDictionaries = async () => {
     try {
@@ -48,7 +64,11 @@ export default function SettingsPage() {
   };
 
   const handleSave = async () => {
+    console.log('💾 handleSave: Starting save process');
+    console.log('💾 handleSave: Current state:', { level, wordsPerLesson, lessonsPerDay, dictionaryId });
+    
     if (!dictionaryId) {
+      console.error('❌ handleSave: No dictionary selected');
       setError('Выберите словарь');
       return;
     }
@@ -58,21 +78,18 @@ export default function SettingsPage() {
     setSuccess(null);
 
     try {
-      console.log('📝 Saving settings:', {
+      const settingsData = {
         level,
         words_per_lesson: wordsPerLesson,
         lessons_per_day: lessonsPerDay,
         dictionary_id: dictionaryId,
-      });
+      };
+      
+      console.log('📝 handleSave: Sending to backend:', settingsData);
 
-      const response = await api.settings.update({
-        level,
-        words_per_lesson: wordsPerLesson,
-        lessons_per_day: lessonsPerDay,
-        dictionary_id: dictionaryId,
-      });
+      const response = await api.settings.update(settingsData);
 
-      console.log('✅ Settings saved:', response);
+      console.log('✅ handleSave: Backend response:', response);
       setSuccess('Настройки успешно сохранены');
       
       // Обновляем профиль в store
@@ -84,16 +101,26 @@ export default function SettingsPage() {
           dailyLessonLimit: lessonsPerDay,
           dictionaryId,
         };
-        console.log('🔄 Updating profile in store:', updatedProfile);
+        console.log('🔄 handleSave: Updating profile in store:', updatedProfile);
+        console.log('🔄 handleSave: Old profile:', profile);
         useStore.setState({ profile: updatedProfile });
+        console.log('🔄 handleSave: Store updated, verifying:', useStore.getState().profile);
+      } else {
+        console.warn('⚠️ handleSave: No profile in store to update');
       }
 
+      console.log('⏰ handleSave: Scheduling navigation to dashboard in 1 second');
       // Возвращаемся на дашборд через 1 секунду
-      setTimeout(() => navigate('/dashboard'), 1000);
+      setTimeout(() => {
+        console.log('🚀 handleSave: Navigating to dashboard');
+        navigate('/dashboard');
+      }, 1000);
     } catch (err: any) {
-      console.error('❌ Failed to save settings:', err);
+      console.error('❌ handleSave: Failed to save settings:', err);
+      console.error('❌ handleSave: Error details:', err.detail || err.message);
       setError(err.detail || 'Не удалось сохранить настройки');
     } finally {
+      console.log('🏁 handleSave: Save process completed');
       setSaving(false);
     }
   };

@@ -11,15 +11,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('🏠 DashboardPage: Component mounted');
+    console.log('🏠 DashboardPage: Current profile:', useStore.getState().profile);
     loadDashboard();
   }, []);
 
   const loadDashboard = async () => {
+    console.log('🏠 DashboardPage: Loading dashboard data');
     try {
       const data = await useStore.getState().getDashboardSummary();
+      console.log('🏠 DashboardPage: Dashboard data loaded:', data);
       setSummary(data);
     } catch (error) {
-      console.error('Failed to load dashboard:', error);
+      console.error('❌ DashboardPage: Failed to load dashboard:', error);
     } finally {
       setLoading(false);
     }
