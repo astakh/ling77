@@ -430,7 +430,6 @@ async def evaluate_exercise(
         try:
             llm_result = await gigachat_client.evaluate_translation(
                 target_sentence=exercise.target_sentence,
-                reference_translation=exercise.reference_translation,
                 user_translation=body.user_translation,
                 target_words=target_words_data,
                 db=db,
