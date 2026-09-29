@@ -38,7 +38,7 @@ interface AppState {
   previewLesson: () => Promise<{ words: { id: string; lemma: string; translations: string[]; isNew: boolean; isDue: boolean }[] }>;
   declineWord: (wordId: string) => void;
   submitExerciseTranslation: (translation: string) => void;
-  evaluateExercise: (exerciseId: number, translation: string) => Promise<{ result: string; words: any[]; isLast: boolean; referenceTranslation: string }>;
+  evaluateExercise: (exerciseId: number, translation: string) => Promise<{ result: string; words: any[]; isLast: boolean; referenceTranslation: string; newSuggestedWords: Array<{ word: string; translation: string }> }>;
   nextExercise: () => void;
   completeLesson: () => Promise<void>;
   abandonLesson: () => Promise<void>;

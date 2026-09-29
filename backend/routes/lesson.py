@@ -439,13 +439,32 @@ async def evaluate_exercise(
             )
             overall_result = llm_result["overall_result"]
             evaluations = llm_result["evaluations"]
-            new_suggested_words = llm_result.get("new_suggested_words", [])
+            new_suggested_words_raw = llm_result.get("new_suggested_words", [])
             
             logger.info(f"✅ Translation evaluated using GigaChat LLM")
             logger.info(f"📊 LLM Response:")
             logger.info(f"   Overall result: {overall_result}")
             logger.info(f"   Evaluations: {evaluations}")
-            logger.info(f"   New suggested words: {new_suggested_words}")
+            logger.info(f"   New suggested words: {new_suggested_words_raw}")
+            
+            # Получаем переводы для новых слов
+            new_suggested_words = []
+            for word_lemma in new_suggested_words_raw:
+                # Ищем слово в базе данных
+                result = await db.execute(
+                    select(Word).where(Word.lemma == word_lemma)
+                )
+                word = result.scalar_one_or_none()
+                if word:
+                    new_suggested_words.append({
+                        "word": word_lemma,
+                        "translation": word.translations[0] if word.translations else "—"
+                    })
+                else:
+                    new_suggested_words.append({
+                        "word": word_lemma,
+                        "translation": "—"
+                    })
         except Exception as e:
             logger.error(f"❌ LLM evaluation failed: {e}")
             logger.error(f"   Error type: {type(e).__name__}")
@@ -506,6 +525,7 @@ async def evaluate_exercise(
             is_target=ew.is_target,
             is_new=ew.is_new,
             surface_form=ew.surface_form,
+            translation=word.translations[0] if word.translations else None,
             result=result_str,
             stage_before=ew.stage_before,
             stage_after=new_stage,

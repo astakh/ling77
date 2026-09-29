@@ -17,6 +17,8 @@ export default function ExercisePage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
   const [selectedNewWords, setSelectedNewWords] = useState<Set<string>>(new Set());
+  const [addedWords, setAddedWords] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Load current lesson if not in store
   useEffect(() => {
@@ -135,17 +137,35 @@ export default function ExercisePage() {
     });
   };
 
+  // Функция для получения перевода слова из newSuggestedWords
+  const getWordTranslation = (word: string): string => {
+    if (!resultData?.newSuggestedWords) return '—';
+    const wordObj = resultData.newSuggestedWords.find((w: any) => w.word === word);
+    return wordObj?.translation || '—';
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const handleAddSelectedWords = async () => {
     if (selectedNewWords.size === 0) return;
     
     try {
       // TODO: Implement API call to add words to user's dictionary
       console.log('Adding words to dictionary:', Array.from(selectedNewWords));
-      alert(`Добавлено слов: ${selectedNewWords.size}`);
+      
+      // Добавляем слова в список добавленных
+      setAddedWords(prev => new Set([...prev, ...selectedNewWords]));
+      
+      showToast(`✓ Добавлено слов: ${selectedNewWords.size}`, 'success');
+      
+      // Очищаем выбор
       setSelectedNewWords(new Set());
     } catch (error) {
       console.error('Failed to add words:', error);
-      alert('Не удалось добавить слова в словарь');
+      showToast('Не удалось добавить слова в словарь', 'error');
     }
   };
 
@@ -262,29 +282,46 @@ export default function ExercisePage() {
         ) : (
           /* Result view */
           <div className="flex-1 flex flex-col items-center justify-center text-center animate-slide-up">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${
-              currentResult === 'correct' ? 'bg-green-100' :
-              currentResult === 'typo' ? 'bg-amber-100' :
-              'bg-red-100'
-            }`}>
-              {currentResult === 'correct' && <CheckCircle className="w-10 h-10 text-green-600" />}
-              {currentResult === 'typo' && <AlertTriangle className="w-10 h-10 text-amber-600" />}
-              {(currentResult === 'incorrect' || currentResult === 'dont_know') && <XCircle className="w-10 h-10 text-red-600" />}
-            </div>
+            {(() => {
+              // Подсчитываем результаты по каждому слову
+              const words = resultData?.words || [];
+              const correctCount = words.filter((w: any) => w.result === 'correct').length;
+              const typoCount = words.filter((w: any) => w.result === 'typo').length;
+              const incorrectCount = words.filter((w: any) => w.result === 'incorrect' || w.result === 'dont_know').length;
+              const totalCount = words.length;
+              const allCorrect = incorrectCount === 0 && typoCount === 0;
+              
+              return (
+                <>
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${
+                    allCorrect ? 'bg-green-100' :
+                    typoCount > 0 && incorrectCount === 0 ? 'bg-amber-100' :
+                    'bg-red-100'
+                  }`}>
+                    {allCorrect && <CheckCircle className="w-10 h-10 text-green-600" />}
+                    {!allCorrect && typoCount > 0 && incorrectCount === 0 && <AlertTriangle className="w-10 h-10 text-amber-600" />}
+                    {incorrectCount > 0 && <XCircle className="w-10 h-10 text-red-600" />}
+                  </div>
 
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              {currentResult === 'correct' && 'Правильно!'}
-              {currentResult === 'typo' && 'Почти! Опечатка'}
-              {currentResult === 'incorrect' && 'Неверно'}
-              {currentResult === 'dont_know' && 'Не беда!'}
-            </h2>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                    {allCorrect && 'Отлично!'}
+                    {!allCorrect && typoCount > 0 && incorrectCount === 0 && 'Почти правильно!'}
+                    {incorrectCount > 0 && 'Есть ошибки'}
+                  </h2>
 
-            <p className="text-gray-500 mb-6">
-              {currentResult === 'correct' && 'Слово запомнится лучше в следующий раз'}
-              {currentResult === 'typo' && 'Маленькая ошибка, но смысл верный'}
-              {currentResult === 'incorrect' && 'Это слово встретится снова'}
-              {currentResult === 'dont_know' && 'Мы повторим это слово позже'}
-            </p>
+                  <p className="text-gray-500 mb-6">
+                    {allCorrect && `Все ${totalCount} слов переведены правильно!`}
+                    {!allCorrect && (
+                      <>
+                        Правильно: {correctCount} из {totalCount}
+                        {typoCount > 0 && `, опечаток: ${typoCount}`}
+                        {incorrectCount > 0 && `, ошибок: ${incorrectCount}`}
+                      </>
+                    )}
+                  </p>
+                </>
+              );
+            })()}
 
             {/* Show correct answer */}
             {resultData && (
@@ -352,33 +389,50 @@ export default function ExercisePage() {
             )}
 
             {/* New suggested words with checkboxes */}
-            {resultData && resultData.newSuggestedWords && resultData.newSuggestedWords.length > 0 && (
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 w-full mb-6">
-                <p className="text-xs text-blue-600 uppercase tracking-wide mb-2 font-medium">💡 Добавить в словарь</p>
-                <p className="text-sm text-blue-700 mb-3">Эти слова встретились в предложении, но вы их не перевели. Выберите слова для добавления в словарь:</p>
-                <div className="space-y-2 mb-4">
-                  {resultData.newSuggestedWords.map((word: string, idx: number) => (
-                    <label key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
-                      <input
-                        type="checkbox"
-                        checked={selectedNewWords.has(word)}
-                        onChange={() => handleToggleWord(word)}
-                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-800">{word}</span>
-                    </label>
-                  ))}
+            {resultData && resultData.newSuggestedWords && resultData.newSuggestedWords.length > 0 && (() => {
+              // Фильтруем уже добавленные слова
+              const availableWords = resultData.newSuggestedWords.filter((word: string) => !addedWords.has(word));
+              
+              if (availableWords.length === 0) return null;
+              
+              return (
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 w-full mb-6">
+                  <p className="text-xs text-blue-600 uppercase tracking-wide mb-2 font-medium">💡 Добавить в словарь</p>
+                  <p className="text-sm text-blue-700 mb-3">Эти слова встретились в предложении, но вы их не перевели. Выберите слова для добавления в словарь:</p>
+                  <div className="space-y-2 mb-4">
+                    {availableWords.map((word: string, idx: number) => {
+                      // Получаем перевод из newSuggestedWords
+                      const translation = getWordTranslation(word);
+                      
+                      return (
+                        <label key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
+                          <input
+                            type="checkbox"
+                            checked={selectedNewWords.has(word)}
+                            onChange={() => handleToggleWord(word)}
+                            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-sm font-medium text-gray-800">{word}</span>
+                              <span className="text-xs text-gray-500">— {translation}</span>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {selectedNewWords.size > 0 && (
+                    <button
+                      onClick={handleAddSelectedWords}
+                      className="w-full py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+                    >
+                      Добавить выбранные слова ({selectedNewWords.size})
+                    </button>
+                  )}
                 </div>
-                {selectedNewWords.size > 0 && (
-                  <button
-                    onClick={handleAddSelectedWords}
-                    className="w-full py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
-                  >
-                    Добавить выбранные слова ({selectedNewWords.size})
-                  </button>
-                )}
-              </div>
-            )}
+              );
+            })()}
 
             <button
               onClick={handleNext}
@@ -435,6 +489,17 @@ export default function ExercisePage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-50 animate-slide-up ${
+          toast.type === 'success' 
+            ? 'bg-green-600 text-white' 
+            : 'bg-red-600 text-white'
+        }`}>
+          <p className="font-medium">{toast.message}</p>
         </div>
       )}
     </div>

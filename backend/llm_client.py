@@ -370,6 +370,12 @@ class GigaChatClient:
                 logger.warning(f"   ❌ Evaluation {i} missing 'user_fragment'")
                 return False
 
+        # Validate new_suggested_words - should be list of strings
+        for i, word in enumerate(result["new_suggested_words"]):
+            if not isinstance(word, str):
+                logger.warning(f"   ❌ new_suggested_words[{i}] is not a string: {type(word)}")
+                return False
+
         logger.info(f"   ✅ Validation passed")
         return True
 

@@ -112,6 +112,7 @@ class ExerciseWordResponse(BaseModel):
     is_target: bool
     is_new: bool
     surface_form: str
+    translation: Optional[str] = None
     result: Optional[str] = None
     stage_before: int
     stage_after: int
@@ -123,13 +124,17 @@ class EvaluateRequest(BaseModel):
     idempotency_key: Optional[str] = None
 
 
+class NewSuggestedWord(BaseModel):
+    word: str
+    translation: str
+
 class EvaluateResponse(BaseModel):
     exercise_id: int
     result: Literal["correct", "typo", "incorrect"]
     words: list["ExerciseWordResponse"]
     reference_translation: str
     is_last: bool
-    new_suggested_words: list[str] = []
+    new_suggested_words: list[NewSuggestedWord] = []
 
 
 class LessonSummaryResponse(BaseModel):
