@@ -33,6 +33,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Захардкоженные CORS origins - НЕ зависят от .env
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
 # Middleware для логирования запросов и CORS
 @app.middleware("http")
 async def add_cors_and_log(request, call_next):
@@ -41,21 +49,8 @@ async def add_cors_and_log(request, call_next):
     # Получаем origin из запроса
     origin = request.headers.get("origin", "")
     
-    # Проверяем что origin в списке разрешённых
-    allowed_origins = settings.CORS_ORIGINS
-    logger.info(f"🌐 CORS check - Origin: '{origin}', Allowed: {allowed_origins}")
-    
-    # Если origin в списке - разрешаем, иначе используем origin из запроса (для отладки)
-    if origin in allowed_origins:
-        allow_origin = origin
-    else:
-        # Для разработки: разрешаем любой origin из localhost
-        if origin and ("localhost" in origin or "127.0.0.1" in origin):
-            allow_origin = origin
-            logger.info(f"   ✅ Allowing localhost origin: {origin}")
-        else:
-            allow_origin = allowed_origins[0] if allowed_origins else ""
-            logger.warning(f"   ⚠️  Origin not in allowed list, using default: {allow_origin}")
+    # Разрешаем любой localhost origin
+    allow_origin = origin if origin else ALLOWED_ORIGINS[0]
     
     # Обработка OPTIONS запросов (preflight)
     if request.method == "OPTIONS":
@@ -63,10 +58,10 @@ async def add_cors_and_log(request, call_next):
         response = JSONResponse(content={"status": "ok"})
         response.headers["Access-Control-Allow-Origin"] = allow_origin
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Max-Age"] = "3600"
-        logger.info(f"🔧 OPTIONS preflight → 200 (origin: {origin}, allow: {allow_origin})")
+        logger.info(f"🔧 OPTIONS preflight → 200 (origin: {origin})")
         return response
     
     try:
@@ -75,7 +70,7 @@ async def add_cors_and_log(request, call_next):
         # Добавляем CORS заголовки ко всем ответам
         response.headers["Access-Control-Allow-Origin"] = allow_origin
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
         response.headers["Access-Control-Allow-Credentials"] = "true"
         return response
     except Exception as e:
