@@ -56,6 +56,9 @@ class GigaChatToken:
         
         # Проверка что credentials настроены
         if not settings.GIGACHAT_CLIENT_ID or not settings.GIGACHAT_CLIENT_SECRET:
+            logger.error("❌ GigaChat credentials not configured!")
+            logger.error(f"   GIGACHAT_CLIENT_ID: {settings.GIGACHAT_CLIENT_ID or 'NOT SET'}")
+            logger.error(f"   GIGACHAT_CLIENT_SECRET: {'SET' if settings.GIGACHAT_CLIENT_SECRET else 'NOT SET'}")
             raise Exception("GigaChat credentials not configured. Set GIGACHAT_CLIENT_ID and GIGACHAT_CLIENT_SECRET in .env")
         
         # Формируем Authorization key: base64(ClientID:ClientSecret)
@@ -65,24 +68,59 @@ class GigaChatToken:
         # Генерируем UUIDv4 для RqUID
         rq_uid = str(uuid.uuid4())
         
+        logger.info(f"🔑 Requesting GigaChat token...")
+        logger.info(f"   URL: {settings.GIGACHAT_AUTH_URL}")
+        logger.info(f"   RqUID: {rq_uid}")
+        logger.info(f"   Client ID: {settings.GIGACHAT_CLIENT_ID[:8]}...")
+        logger.info(f"   Auth Key (first 20 chars): {auth_key[:20]}...")
+        
         async with httpx.AsyncClient(verify=False) as client:
-            response = await client.post(
-                settings.GIGACHAT_AUTH_URL,
-                data={
-                    "scope": "GIGACHAT_API_PERS",
-                },
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Accept": "application/json",
-                    "RqUID": rq_uid,
-                    "Authorization": f"Basic {auth_key}",
-                },
-                timeout=10.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-            self._token = data["access_token"]
-            self._expires_at = data["expires_at"] / 1000  # ms -> seconds
+            try:
+                response = await client.post(
+                    settings.GIGACHAT_AUTH_URL,
+                    data={
+                        "scope": "GIGACHAT_API_PERS",
+                    },
+                    headers={
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Accept": "application/json",
+                        "RqUID": rq_uid,
+                        "Authorization": f"Basic {auth_key}",
+                    },
+                    timeout=10.0,
+                )
+                
+                logger.info(f"📥 GigaChat OAuth response: {response.status_code}")
+                
+                # Логируем детали ошибки если статус не 200
+                if response.status_code != 200:
+                    logger.error(f"❌ GigaChat OAuth failed with status {response.status_code}")
+                    logger.error(f"   Response headers: {dict(response.headers)}")
+                    try:
+                        error_body = response.json()
+                        logger.error(f"   Response body: {error_body}")
+                    except:
+                        logger.error(f"   Response text: {response.text[:500]}")
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                logger.info(f"✅ GigaChat token obtained successfully")
+                logger.info(f"   Token expires at: {data.get('expires_at')}")
+                
+                self._token = data["access_token"]
+                self._expires_at = data["expires_at"] / 1000  # ms -> seconds
+                
+            except httpx.HTTPStatusError as e:
+                logger.error(f"❌ HTTP error during GigaChat OAuth: {e}")
+                logger.error(f"   Request URL: {e.request.url}")
+                logger.error(f"   Request headers: {dict(e.request.headers)}")
+                logger.error(f"   Response status: {e.response.status_code}")
+                logger.error(f"   Response body: {e.response.text[:500]}")
+                raise
+            except Exception as e:
+                logger.error(f"❌ Unexpected error during GigaChat OAuth: {e}")
+                raise
 
 
 # Singleton
