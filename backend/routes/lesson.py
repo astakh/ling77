@@ -48,13 +48,18 @@ async def select_words_for_lesson(
     declined_word_ids: set[int] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """
-    Select words for lesson: due words first, then new words.
+    Select words for lesson with new algorithm:
+    1. Total words = words_per_lesson
+    2. Minimum 1 new word guaranteed
+    3. If not enough words, add more new words
+    4. If too many due words, take most overdue ones
     Returns (due_words, new_words) as dicts with word info.
     """
     declined = declined_word_ids or set()
     next_lesson = profile.last_lesson_number + 1
+    target_total = profile.words_per_lesson
 
-    # Get due words
+    # Get all user words
     result = await db.execute(
         select(UserWord, Word)
         .join(Word, UserWord.word_id == Word.id)
@@ -65,11 +70,14 @@ async def select_words_for_lesson(
     )
     all_user_words = result.all()
 
+    # Get due words with overdue calculation
     due_words = []
     for uw, word in all_user_words:
         if word.id in declined:
             continue
         if is_due(uw.stage, uw.due_lesson_number, profile.last_lesson_number):
+            # Calculate overdue: how many lessons past the due date
+            overdue = profile.last_lesson_number - (uw.due_lesson_number or 0)
             due_words.append({
                 "word_id": word.id,
                 "lemma": word.lemma,
@@ -77,14 +85,12 @@ async def select_words_for_lesson(
                 "translations": word.translations,
                 "stage": uw.stage,
                 "is_new": False,
+                "overdue": overdue,
                 "hash": deterministic_hash(profile.id, next_lesson, word.id),
             })
 
-    # Sort by deterministic hash
-    due_words.sort(key=lambda x: x["hash"])
-    # Max 60% of words_per_lesson for due words (but at least 3)
-    max_due_words = max(int(profile.words_per_lesson * 0.6), 3)
-    due_words = due_words[:max_due_words]
+    # Sort by overdue (most overdue first), then by hash for determinism
+    due_words.sort(key=lambda x: (-x["overdue"], x["hash"]))
 
     # Get new words (not in user_words) from the selected dictionary
     existing_ids = {uw.word_id for uw, _ in all_user_words}
@@ -123,12 +129,33 @@ async def select_words_for_lesson(
             "hash": deterministic_hash(profile.id, next_lesson, word.id),
         })
 
+    # Sort new words by deterministic hash
     new_words.sort(key=lambda x: x["hash"])
-    # Fill remaining slots with new words to reach words_per_lesson
-    remaining = max(profile.words_per_lesson - len(due_words), 0)
-    new_words = new_words[:remaining]
 
-    return due_words, new_words
+    # Algorithm:
+    # 1. Guarantee at least 1 new word
+    # 2. Take due words (most overdue first) up to target_total - 1
+    # 3. Fill remaining with new words
+    
+    selected_new_words = []
+    selected_due_words = []
+    
+    # Step 1: Guarantee at least 1 new word
+    if new_words:
+        selected_new_words.append(new_words[0])
+        new_words = new_words[1:]
+    
+    # Step 2: Take due words (most overdue first)
+    # Leave space for at least 1 new word (already added)
+    max_due = target_total - len(selected_new_words)
+    selected_due_words = due_words[:max_due]
+    
+    # Step 3: Fill remaining with new words
+    remaining = target_total - len(selected_due_words) - len(selected_new_words)
+    if remaining > 0 and new_words:
+        selected_new_words.extend(new_words[:remaining])
+    
+    return selected_due_words, selected_new_words
 
 
 @router.post("/preview", response_model=LessonPreviewResponse)
