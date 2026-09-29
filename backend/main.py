@@ -42,7 +42,19 @@ async def add_cors_and_log(request, call_next):
     
     # Проверяем что origin в списке разрешённых
     allowed_origins = settings.CORS_ORIGINS
-    allow_origin = origin if origin in allowed_origins else (allowed_origins[0] if allowed_origins else "")
+    logger.info(f"🌐 CORS check - Origin: '{origin}', Allowed: {allowed_origins}")
+    
+    # Если origin в списке - разрешаем, иначе используем origin из запроса (для отладки)
+    if origin in allowed_origins:
+        allow_origin = origin
+    else:
+        # Для разработки: разрешаем любой origin из localhost
+        if origin and ("localhost" in origin or "127.0.0.1" in origin):
+            allow_origin = origin
+            logger.info(f"   ✅ Allowing localhost origin: {origin}")
+        else:
+            allow_origin = allowed_origins[0] if allowed_origins else ""
+            logger.warning(f"   ⚠️  Origin not in allowed list, using default: {allow_origin}")
     
     # Обработка OPTIONS запросов (preflight)
     if request.method == "OPTIONS":
@@ -53,7 +65,7 @@ async def add_cors_and_log(request, call_next):
         response.headers["Access-Control-Allow-Headers"] = "*"
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Max-Age"] = "3600"
-        logger.info(f"🔧 OPTIONS preflight → 200 (origin: {origin})")
+        logger.info(f"🔧 OPTIONS preflight → 200 (origin: {origin}, allow: {allow_origin})")
         return response
     
     try:
