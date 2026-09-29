@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Globe, ArrowRight } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { GraduationCap, Globe, ArrowRight, BookOpen } from 'lucide-react';
+import { api } from '../api/client';
 
 type Level = 'A1' | 'A2' | 'B1' | 'B2';
 
@@ -11,23 +13,49 @@ const LEVELS: { value: Level; label: string; description: string }[] = [
   { value: 'B2', label: 'B2 — Выше среднего', description: 'Сложные тексты и абстрактные темы' },
 ];
 
+interface Dictionary {
+  id: number;
+  name: string;
+  description: string | null;
+  category: string;
+  total_words: number;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  general: '📚 Общий',
+  it: '💻 IT',
+  travel: '✈️ Путешествия',
+  business: '💼 Бизнес',
+  food: '🍽️ Еда',
+  medical: '🏥 Медицина',
+  daily: '💬 Повседневное',
+};
+
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const [level, setLevel] = useState<Level>('A1');
   const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow');
-  const [loading, setLoading] = useState(false);
+  const [dictionaries, setDictionaries] = useState<Dictionary[]>([]);
+  const [selectedDictId, setSelectedDictId] = useState<number | null>(null);
+  const { completeOnboarding, isLoading } = useStore();
+
+  useEffect(() => {
+    api.dictionaries.list().then(res => {
+      setDictionaries(res.dictionaries);
+      const generalDict = res.dictionaries.find(d => d.category === 'general' && d.name.includes('Универсальный'));
+      if (generalDict) {
+        setSelectedDictId(generalDict.id);
+      }
+    }).catch(err => {
+      console.error('Failed to load dictionaries:', err);
+    });
+  }, []);
 
   const handleComplete = async () => {
-    setLoading(true);
     try {
-      // TODO: Call API to complete onboarding
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
+      await completeOnboarding(timezone, level, selectedDictId);
     } catch (error) {
       console.error('Onboarding failed:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -67,10 +95,10 @@ export default function OnboardingPage() {
 
           <button
             onClick={handleComplete}
-            disabled={loading}
+            disabled={isLoading}
             className="w-full py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-50"
           >
-            {loading ? (
+            {isLoading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Загрузка...

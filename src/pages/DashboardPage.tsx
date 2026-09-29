@@ -1,31 +1,67 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useStore } from '../store/useStore';
 import { Flame, BookOpen, Brain, Target, Play, Clock, LogOut, List, Library, Settings } from 'lucide-react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { logout, profile } = useStore();
+  const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // TODO: Load actual data from API
-  const summary = {
-    cta: 'start' as const,
-    streak: 0,
-    totalLessons: 0,
-    totalWords: 0,
-    masteredWords: 0,
-    dueWords: 0,
-    lessonsToday: 0,
-    currentLessonId: null,
+  useEffect(() => {
+    console.log('🏠 DashboardPage: Component mounted');
+    console.log('🏠 DashboardPage: Current profile:', useStore.getState().profile);
+    loadDashboard();
+  }, []);
+
+  const loadDashboard = async () => {
+    console.log('🏠 DashboardPage: Loading dashboard data');
+    try {
+      const data = await useStore.getState().getDashboardSummary();
+      console.log('🏠 DashboardPage: Dashboard data loaded:', data);
+      setSummary(data);
+    } catch (error) {
+      console.error('❌ DashboardPage: Failed to load dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCTA = () => {
-    if (summary.cta === 'start') {
+    console.log('🎯 Dashboard CTA clicked');
+    console.log('   summary:', summary);
+    
+    if (!summary) return;
+    
+    if (summary.cta === 'resume' && summary.currentLessonId) {
+      console.log(`   Resuming lesson #${summary.currentLessonId}`);
+      navigate('/lesson/exercise');
+    } else if (summary.cta === 'start') {
+      console.log('   Starting new lesson');
       navigate('/lesson/preview');
     }
   };
 
-  const handleLogout = () => {
-    // TODO: Implement logout
-    navigate('/auth');
+  const handleLogout = async () => {
+    await logout();
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (!summary) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-red-500">Ошибка загрузки</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -111,7 +147,7 @@ export default function DashboardPage() {
               <span className="text-xs text-gray-500">Сегодня</span>
             </div>
             <div className="text-2xl font-bold text-gray-800">
-              {summary.lessonsToday}/5
+              {summary.lessonsToday}/{profile?.dailyLessonLimit || 5}
             </div>
           </div>
         </div>

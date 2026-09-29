@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useStore } from '../store/useStore';
 import { BookOpen, Mail, Lock, UserPlus, LogIn } from 'lucide-react';
 
 export default function AuthPage() {
@@ -8,23 +9,32 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { register, login, isLoading } = useStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+
+    if (!email || !password) {
+      setError('Заполните все поля');
+      return;
+    }
 
     try {
-      // TODO: Implement actual API calls
-      // For now, just navigate to dashboard
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
+      if (isLogin) {
+        const success = await login(email, password);
+        if (!success) {
+          setError('Неверный email или пароль');
+        }
+      } else {
+        if (password.length < 6) {
+          setError('Пароль должен быть не менее 6 символов');
+          return;
+        }
+        await register(email, password);
+      }
     } catch (err: any) {
       setError(err.detail || 'Ошибка. Попробуйте ещё раз.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -85,10 +95,10 @@ export default function AuthPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="w-full py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-50"
             >
-              {loading ? (
+              {isLoading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Загрузка...
