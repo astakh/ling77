@@ -137,13 +137,6 @@ export default function ExercisePage() {
     });
   };
 
-  // Функция для получения перевода слова из newSuggestedWords
-  const getWordTranslation = (word: string): string => {
-    if (!resultData?.newSuggestedWords) return '—';
-    const wordObj = resultData.newSuggestedWords.find((w: any) => w.word === word);
-    return wordObj?.translation || '—';
-  };
-
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -391,7 +384,7 @@ export default function ExercisePage() {
             {/* New suggested words with checkboxes */}
             {resultData && resultData.newSuggestedWords && resultData.newSuggestedWords.length > 0 && (() => {
               // Фильтруем уже добавленные слова
-              const availableWords = resultData.newSuggestedWords.filter((word: string) => !addedWords.has(word));
+              const availableWords = resultData.newSuggestedWords.filter((wordObj: any) => !addedWords.has(wordObj.word));
               
               if (availableWords.length === 0) return null;
               
@@ -400,22 +393,19 @@ export default function ExercisePage() {
                   <p className="text-xs text-blue-600 uppercase tracking-wide mb-2 font-medium">💡 Добавить в словарь</p>
                   <p className="text-sm text-blue-700 mb-3">Эти слова встретились в предложении, но вы их не перевели. Выберите слова для добавления в словарь:</p>
                   <div className="space-y-2 mb-4">
-                    {availableWords.map((word: string, idx: number) => {
-                      // Получаем перевод из newSuggestedWords
-                      const translation = getWordTranslation(word);
-                      
+                    {availableWords.map((wordObj: any, idx: number) => {
                       return (
                         <label key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
                           <input
                             type="checkbox"
-                            checked={selectedNewWords.has(word)}
-                            onChange={() => handleToggleWord(word)}
+                            checked={selectedNewWords.has(wordObj.word)}
+                            onChange={() => handleToggleWord(wordObj.word)}
                             className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
                           />
                           <div className="flex-1">
                             <div className="flex items-baseline gap-2">
-                              <span className="text-sm font-medium text-gray-800">{word}</span>
-                              <span className="text-xs text-gray-500">— {translation}</span>
+                              <span className="text-sm font-medium text-gray-800">{wordObj.word}</span>
+                              <span className="text-xs text-gray-500">— {wordObj.translation}</span>
                             </div>
                           </div>
                         </label>
