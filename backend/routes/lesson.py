@@ -452,9 +452,18 @@ async def evaluate_exercise(
             new_suggested_words = llm_result.get("new_suggested_words", [])
             
             logger.info(f"✅ Translation evaluated using GigaChat LLM")
-            logger.info(f"📊 LLM Response:")
+            logger.info(f"📊 FULL LLM Response: {llm_result}")
             logger.info(f"   Overall result: {overall_result}")
-            logger.info(f"   Evaluations: {evaluations}")
+            logger.info(f"   Evaluations count: {len(evaluations)}")
+            
+            # Логируем каждое evaluation детально
+            for i, eval_item in enumerate(evaluations):
+                logger.info(f"   📝 Evaluation {i}:")
+                logger.info(f"      word_lemma: '{eval_item.get('word_lemma', 'MISSING')}'")
+                logger.info(f"      result: '{eval_item.get('result', 'MISSING')}'")
+                logger.info(f"      user_fragment: '{eval_item.get('user_fragment', 'MISSING')}'")
+                logger.info(f"      ALL KEYS: {list(eval_item.keys())}")
+            
             logger.info(f"   New suggested words: {new_suggested_words}")
         except Exception as e:
             logger.error(f"❌ LLM evaluation failed: {e}")
@@ -479,14 +488,21 @@ async def evaluate_exercise(
             (e for e in evaluations if e["word_lemma"] == word.lemma),
             {"result": "incorrect", "user_fragment": ""}
         )
+        
+        logger.info(f"🔍 Looking for evaluation of word '{word.lemma}':")
+        logger.info(f"   Found eval_data: {eval_data}")
+        logger.info(f"   eval_data keys: {list(eval_data.keys())}")
 
         result_str = eval_data["result"]
+        user_fragment = eval_data.get("user_fragment", "")
         new_stage = calculate_new_stage(ew.stage_before, result_str)
         new_due = calculate_due_lesson_number(lesson.lesson_number, new_stage)
 
         ew.result = result_str
-        ew.user_fragment = eval_data.get("user_fragment", "")
+        ew.user_fragment = user_fragment
         ew.stage_after = new_stage
+        
+        logger.info(f"💾 Saving word '{word.lemma}': result={result_str}, user_fragment='{user_fragment}'")
 
         # Update or create user_word
         result = await db.execute(
@@ -525,7 +541,7 @@ async def evaluate_exercise(
 
     logger.info(f"📝 Exercise words response: {len(exercise_words_response)} words")
     for i, ewr in enumerate(exercise_words_response):
-        logger.info(f"   Word {i}: {ewr.surface_form} - {ewr.result} - {ewr.translation}")
+        logger.info(f"   Word {i}: {ewr.surface_form} - {ewr.result} - {ewr.translation} - user_fragment='{ewr.user_fragment}'")
 
     # Check if this is the last exercise
     result = await db.execute(

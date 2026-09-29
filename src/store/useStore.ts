@@ -358,6 +358,13 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.lesson.evaluate(exerciseId, translation);
+      console.log('📥 Backend response for evaluation:', response);
+      console.log('📝 Words with user_fragment:', response.words.map((w: any) => ({
+        word: w.surface_form || w.surfaceForm,
+        result: w.result,
+        user_fragment: w.user_fragment || w.userFragment,
+        translation: w.translation
+      })));
       set({ isLoading: false });
       return {
         result: response.result,

@@ -79,6 +79,8 @@ export default function ExercisePage() {
     
     try {
       const result = await evaluateExercise(parseInt(exercise.id), exerciseDraft);
+      console.log('🎯 ExercisePage received result:', result);
+      console.log('📝 Words in result:', result.words);
       setCurrentResult(result.result);
       setResultData(result);
       setShowResult(true);
@@ -330,9 +332,12 @@ export default function ExercisePage() {
                 <p className="text-xs text-gray-500 uppercase tracking-wide mb-3 font-medium">📝 Оценка слов</p>
                 <div className="space-y-3">
                   {resultData.words.map((word: any, idx: number) => {
-                    console.log(`Word ${idx}:`, word); // Логируем структуру
+                    console.log(`🔍 Word ${idx} rendering:`, word);
+                    console.log(`   user_fragment:`, word.user_fragment);
+                    console.log(`   userFragment:`, word.userFragment);
                     // Маппим snake_case из backend в camelCase для frontend
                     const userFragment = word.user_fragment || word.userFragment;
+                    console.log(`   Mapped userFragment:`, userFragment);
                     const isCorrect = word.result === 'correct';
                     const isTypo = word.result === 'typo';
                     const isIncorrect = word.result === 'incorrect' || word.result === 'dont_know';
