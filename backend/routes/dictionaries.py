@@ -53,8 +53,12 @@ async def list_dictionaries(
     
     Dictionaries are THEMATIC (IT, travel, business, etc.) — NOT level-based.
     Word level (A1-B2) is a property of the word itself.
+    Only public dictionaries are shown to users.
     """
-    query = select(Dictionary).where(Dictionary.is_active == True)
+    query = select(Dictionary).where(
+        Dictionary.is_active == True,
+        Dictionary.is_public == True  # Показываем только публичные словари
+    )
 
     if search:
         query = query.where(Dictionary.name.ilike(f"%{search}%"))

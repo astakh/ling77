@@ -53,6 +53,7 @@ class Dictionary(Base):
     description = Column(Text, nullable=True)
     category = Column(String(50), nullable=False, default="general")  # general, it, travel, business, etc.
     is_active = Column(Boolean, nullable=False, default=True)
+    is_public = Column(Boolean, nullable=False, default=True)  # Видимость для пользователей
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 

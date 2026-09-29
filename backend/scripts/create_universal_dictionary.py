@@ -1,10 +1,14 @@
 """
-Скрипт для создания словаря широкой тематики с базовой лексикой.
+Скрипт для создания УНИВЕРСАЛЬНОГО словаря с базовой лексикой.
 Этот словарь содержит общие слова повседневного использования без специальной терминологии.
+
+Отличие от "Общего словаря":
+- "Общий словарь" - технический, содержит ВСЕ слова из всех словарей (скрыт от пользователей)
+- "Универсальный словарь" - для пользователей, содержит только базовую лексику без спецтерминов
 
 Использование:
     cd backend
-    python scripts/create_general_dictionary.py
+    python scripts/create_universal_dictionary.py
 """
 
 import asyncio
@@ -27,7 +31,7 @@ def make_lemma_key(lemma: str) -> str:
 
 # Базовая лексика широкой тематики (A1-B1)
 # Повседневные слова без специальной терминологии
-GENERAL_WORDS = [
+UNIVERSAL_WORDS = [
     # A1 - Базовые слова
     # Существительные
     {"lemma": "time", "pos": "noun", "level": "A1", "translations": ["время"]},
@@ -152,10 +156,6 @@ GENERAL_WORDS = [
     {"lemma": "problem", "pos": "noun", "level": "A2", "translations": ["проблема"]},
     {"lemma": "school", "pos": "noun", "level": "A2", "translations": ["школа"]},
     {"lemma": "food", "pos": "noun", "level": "A2", "translations": ["еда"]},
-    {"lemma": "family", "pos": "noun", "level": "A2", "translations": ["семья"]},
-    {"lemma": "home", "pos": "noun", "level": "A2", "translations": ["дом"]},
-    {"lemma": "hand", "pos": "noun", "level": "A2", "translations": ["рука"]},
-    {"lemma": "child", "pos": "noun", "level": "A2", "translations": ["ребенок"]},
     {"lemma": "door", "pos": "noun", "level": "A2", "translations": ["дверь"]},
     {"lemma": "health", "pos": "noun", "level": "A2", "translations": ["здоровье"]},
     {"lemma": "person", "pos": "noun", "level": "A2", "translations": ["человек"]},
@@ -244,7 +244,6 @@ GENERAL_WORDS = [
     {"lemma": "creative", "pos": "adjective", "level": "B1", "translations": ["творческий"]},
     {"lemma": "decision", "pos": "noun", "level": "B1", "translations": ["решение"]},
     {"lemma": "describe", "pos": "verb", "level": "B1", "translations": ["описывать"]},
-    {"lemma": "despite", "pos": "preposition", "level": "B1", "translations": ["несмотря на"]},
     {"lemma": "determine", "pos": "verb", "level": "B1", "translations": ["определять"]},
     {"lemma": "effective", "pos": "adjective", "level": "B1", "translations": ["эффективный"]},
     {"lemma": "encourage", "pos": "verb", "level": "B1", "translations": ["поощрять"]},
@@ -299,44 +298,45 @@ GENERAL_WORDS = [
     {"lemma": "support", "pos": "verb", "level": "B1", "translations": ["поддерживать"]},
     {"lemma": "traditional", "pos": "adjective", "level": "B1", "translations": ["традиционный"]},
     {"lemma": "transfer", "pos": "verb", "level": "B1", "translations": ["передавать"]},
-    {"lemma": "understand", "pos": "verb", "level": "B1", "translations": ["понимать"]},
     {"lemma": "valuable", "pos": "adjective", "level": "B1", "translations": ["ценный"]},
     {"lemma": "variety", "pos": "noun", "level": "B1", "translations": ["разнообразие"]},
 ]
 
 
-async def create_general_dictionary():
-    """Создаем словарь широкой тематики"""
+async def create_universal_dictionary():
+    """Создаем универсальный словарь"""
     async with async_session_factory() as session:
         # Проверяем, существует ли уже словарь
         result = await session.execute(
-            select(Dictionary).where(Dictionary.name == "Общий словарь")
+            select(Dictionary).where(Dictionary.name == "Универсальный словарь")
         )
         existing_dict = result.scalar_one_or_none()
         
         if existing_dict:
-            print(f"⚠️  Словарь 'Общий словарь' уже существует (id={existing_dict.id})")
+            print(f"⚠️  Словарь 'Универсальный словарь' уже существует (id={existing_dict.id})")
             print(f"   Пропускаем создание.")
             return
         
         # Создаем новый словарь
         dictionary = Dictionary(
-            name="Общий словарь",
-            description="Базовая лексика широкой тематики для повседневного общения",
-            category="general"
+            name="Универсальный словарь",
+            description="Базовая лексика для повседневного общения без специальной терминологии",
+            category="general",
+            is_public=True  # Доступен для пользователей
         )
         session.add(dictionary)
         await session.flush()
         
-        print(f"✅ Создан словарь 'Общий словарь' (id={dictionary.id})")
+        print(f"✅ Создан словарь 'Универсальный словарь' (id={dictionary.id})")
         print(f"   Описание: {dictionary.description}")
         print(f"   Категория: {dictionary.category}")
+        print(f"   Доступен для пользователей: {dictionary.is_public}")
         
         # Добавляем слова
         added_count = 0
         skipped_count = 0
         
-        for word_data in GENERAL_WORDS:
+        for word_data in UNIVERSAL_WORDS:
             lemma_key = make_lemma_key(word_data["lemma"])
             
             # Проверяем, существует ли слово
@@ -381,7 +381,7 @@ async def create_general_dictionary():
         await session.commit()
         
         print(f"\n📊 Статистика:")
-        print(f"   Всего слов в списке: {len(GENERAL_WORDS)}")
+        print(f"   Всего слов в списке: {len(UNIVERSAL_WORDS)}")
         print(f"   Добавлено новых слов: {added_count}")
         print(f"   Пропущено (уже были в словаре): {skipped_count}")
         
@@ -392,11 +392,12 @@ async def create_general_dictionary():
         total_words = len(result.scalars().all())
         
         print(f"\n✅ Готово!")
-        print(f"   Словарь 'Общий словарь' содержит {total_words} слов")
+        print(f"   Словарь 'Универсальный словарь' содержит {total_words} слов")
         print(f"\n💡 Теперь пользователи могут выбрать этот словарь в настройках")
+        print(f"💡 Этот словарь содержит только базовую лексику без специальных терминов")
 
 
 if __name__ == "__main__":
-    print("🚀 Создание словаря широкой тематики...")
+    print("🚀 Создание УНИВЕРСАЛЬНОГО словаря...")
     print("=" * 60)
-    asyncio.run(create_general_dictionary())
+    asyncio.run(create_universal_dictionary())

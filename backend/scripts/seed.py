@@ -27,8 +27,9 @@ from models import Dictionary, Word, DictionaryWord
 DICTIONARIES = [
     {
         "name": "Общий словарь",
-        "description": "Все слова приложения. Включает слова из всех тематических словарей.",
+        "description": "Все слова приложения. Включает слова из всех тематических словарей. (Скрыт от пользователей)",
         "category": "general",
+        "is_public": False,  # Скрываем от пользователей
     },
     {
         "name": "IT и технологии",
@@ -298,6 +299,7 @@ async def seed():
                     name=d_data["name"],
                     description=d_data["description"],
                     category=d_data["category"],
+                    is_public=d_data.get("is_public", True),  # По умолчанию True
                 )
                 session.add(d)
                 await session.flush()
