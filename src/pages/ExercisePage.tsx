@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle, XCircle, HelpCircle, Loader2, Eye } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle, HelpCircle, Loader2 } from 'lucide-react';
 
 export default function ExercisePage() {
   const navigate = useNavigate();
@@ -11,7 +11,6 @@ export default function ExercisePage() {
     completeLesson, abandonLesson, setExerciseDraft, isLoading, error, clearError
   } = useStore();
 
-  const [showTranslation, setShowTranslation] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [currentResult, setCurrentResult] = useState<string | null>(null);
   const [showAbandonModal, setShowAbandonModal] = useState(false);
@@ -94,7 +93,6 @@ export default function ExercisePage() {
   const handleNext = () => {
     setShowResult(false);
     setCurrentResult(null);
-    setShowTranslation(false);
     setExerciseDraft('');
     setResultData(null);
 
@@ -154,27 +152,29 @@ export default function ExercisePage() {
         {!showResult ? (
           <div className="animate-fade-in flex flex-col flex-1">
             {/* Sentence */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm mb-6 animate-slide-up">
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm mb-4 animate-slide-up">
               <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Переведите предложение</p>
               <p className="text-lg font-medium text-gray-800 leading-relaxed">
                 {exercise.targetSentence}
               </p>
             </div>
 
-            {/* Reference translation toggle */}
-            <button
-              onClick={() => setShowTranslation(!showTranslation)}
-              className="flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 mb-4 transition"
-            >
-              <Eye className="w-4 h-4" />
-              {showTranslation ? 'Скрыть перевод' : 'Показать перевод-подсказку'}
-            </button>
-
-            {showTranslation && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-                <p className="text-sm text-amber-800">{exercise.referenceTranslation}</p>
+            {/* Target words */}
+            <div className="bg-indigo-50 rounded-xl p-4 mb-6 border border-indigo-100">
+              <p className="text-xs text-indigo-600 uppercase tracking-wide mb-2 font-medium">Слова для перевода</p>
+              <div className="flex flex-wrap gap-2">
+                {exercise.words
+                  .filter(w => w.isTarget)
+                  .map((w, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-white px-3 py-1.5 rounded-lg text-sm font-medium text-indigo-700 border border-indigo-200"
+                    >
+                      {w.surfaceForm}
+                    </span>
+                  ))}
               </div>
-            )}
+            </div>
 
             {/* Input */}
             <div className="flex-1">
