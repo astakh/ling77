@@ -129,6 +129,7 @@ class EvaluateResponse(BaseModel):
     words: list["ExerciseWordResponse"]
     reference_translation: str
     is_last: bool
+    new_suggested_words: list[str] = []
 
 
 class LessonSummaryResponse(BaseModel):

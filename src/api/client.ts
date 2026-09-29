@@ -218,6 +218,7 @@ export const api = {
         words: any[];
         reference_translation: string;
         is_last: boolean;
+        new_suggested_words: string[];
       }>('/lesson/evaluate', {
         method: 'POST',
         body: JSON.stringify({ exercise_id: exerciseId, user_translation: userTranslation }),

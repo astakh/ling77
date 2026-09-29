@@ -363,6 +363,7 @@ export const useStore = create<AppState>((set, get) => ({
         words: response.words,
         isLast: response.is_last,
         referenceTranslation: response.reference_translation,
+        newSuggestedWords: response.new_suggested_words || [],
       };
     } catch (error: any) {
       set({ error: error.detail || 'Failed to evaluate exercise', isLoading: false });

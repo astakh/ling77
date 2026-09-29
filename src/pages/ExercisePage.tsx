@@ -266,6 +266,25 @@ export default function ExercisePage() {
               </div>
             )}
 
+            {/* Show new suggested words */}
+            {resultData && resultData.newSuggestedWords && resultData.newSuggestedWords.length > 0 && (
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 w-full mb-6">
+                <p className="text-xs text-blue-600 uppercase tracking-wide mb-2 font-medium">💡 Слова для изучения</p>
+                <p className="text-sm text-blue-700 mb-2">Эти слова встретились в предложении, но вы их не перевели:</p>
+                <div className="flex flex-wrap gap-2">
+                  {resultData.newSuggestedWords.map((word: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="bg-white px-3 py-1.5 rounded-lg text-sm font-medium text-blue-700 border border-blue-200"
+                    >
+                      {word}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-blue-600 mt-2">Они будут добавлены в ваш словарь для повторения</p>
+              </div>
+            )}
+
             <button
               onClick={handleNext}
               className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200"

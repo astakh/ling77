@@ -425,6 +425,7 @@ async def evaluate_exercise(
             {"word_lemma": word.lemma, "result": "incorrect", "user_fragment": ""}
             for _, word in target_word_rows
         ]
+        new_suggested_words = []
     else:
         # Call LLM
         try:
@@ -438,7 +439,13 @@ async def evaluate_exercise(
             )
             overall_result = llm_result["overall_result"]
             evaluations = llm_result["evaluations"]
+            new_suggested_words = llm_result.get("new_suggested_words", [])
+            
             logger.info(f"✅ Translation evaluated using GigaChat LLM")
+            logger.info(f"📊 LLM Response:")
+            logger.info(f"   Overall result: {overall_result}")
+            logger.info(f"   Evaluations: {evaluations}")
+            logger.info(f"   New suggested words: {new_suggested_words}")
         except Exception as e:
             logger.error(f"LLM evaluation failed: {e}")
             raise HTTPException(status_code=503, detail="Сервис временно недоступен. Попробуйте позже.")
@@ -536,6 +543,7 @@ async def evaluate_exercise(
         words=exercise_words_response,
         reference_translation=exercise.reference_translation,
         is_last=is_last,
+        new_suggested_words=new_suggested_words if 'new_suggested_words' in locals() else [],
     )
 
 
