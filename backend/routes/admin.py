@@ -8,8 +8,11 @@ from pydantic import BaseModel
 from typing import Optional
 
 from database import get_db, async_session_factory
-from models import Dictionary, Word, DictionaryWord
+from models import Dictionary, Word, DictionaryWord, LearningProfile
 from config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -176,6 +179,24 @@ async def delete_dictionary(dictionary_id: int):
                 detail="Словарь не найден"
             )
         
+        # Проверяем, используется ли этот словарь пользователями
+        profiles_result = await session.execute(
+            select(LearningProfile).where(
+                LearningProfile.dictionary_id == dictionary_id
+            )
+        )
+        affected_profiles = profiles_result.scalars().all()
+        
+        if affected_profiles:
+            # Обновляем профили пользователей - сбрасываем dictionary_id на NULL
+            for profile in affected_profiles:
+                profile.dictionary_id = None
+            
+            logger.warning(
+                f"⚠️ Dictionary {dictionary_id} is used by {len(affected_profiles)} users. "
+                f"Their dictionary_id will be reset to NULL."
+            )
+        
         # Удаляем все связи с словами
         await session.execute(
             delete(DictionaryWord).where(
@@ -190,7 +211,11 @@ async def delete_dictionary(dictionary_id: int):
         
         await session.commit()
         
-        return {"success": True, "message": "Словарь удален"}
+        return {
+            "success": True, 
+            "message": "Словарь удален",
+            "affected_users": len(affected_profiles)
+        }
 
 
 @router.put("/dictionaries/{dictionary_id}", response_model=DictionaryDetailResponse)

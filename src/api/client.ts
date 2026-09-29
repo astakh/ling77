@@ -346,7 +346,7 @@ export const api = {
       }),
 
     deleteDictionary: (id: number) =>
-      request<{ success: boolean; message: string }>(`/admin/dictionaries/${id}`, {
+      request<{ success: boolean; message: string; affected_users: number }>(`/admin/dictionaries/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,

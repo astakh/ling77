@@ -45,12 +45,23 @@ export default function AdminDictionariesPage() {
   };
 
   const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Вы уверены, что хотите удалить словарь "${name}"? Это действие нельзя отменить.`)) {
+    if (!confirm(`Вы уверены, что хотите удалить словарь "${name}"?\n\nЭто действие нельзя отменить. Все связи словаря со словами будут удалены.`)) {
       return;
     }
 
     try {
-      await api.admin.deleteDictionary(id);
+      const response = await api.admin.deleteDictionary(id);
+      
+      if (response.affected_users > 0) {
+        alert(
+          `Словарь "${name}" удален.\n\n` +
+          `⚠️ Внимание: ${response.affected_users} пользователь(ей) использовали этот словарь.\n` +
+          `Их активный словарь сброшен. Им нужно выбрать новый словарь в настройках.`
+        );
+      } else {
+        alert(`Словарь "${name}" успешно удален.`);
+      }
+      
       setDictionaries(dictionaries.filter(d => d.id !== id));
     } catch (err: any) {
       alert(err.detail || 'Ошибка удаления словаря');
