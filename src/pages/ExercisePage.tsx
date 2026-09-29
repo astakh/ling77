@@ -336,8 +336,12 @@ export default function ExercisePage() {
                     console.log(`   user_fragment:`, word.user_fragment);
                     console.log(`   userFragment:`, word.userFragment);
                     // Маппим snake_case из backend в camelCase для frontend
-                    const userFragment = word.user_fragment || word.userFragment;
+                    // Проверяем наличие поля, а не только значение
+                    const userFragment = word.user_fragment !== undefined 
+                      ? word.user_fragment 
+                      : (word.userFragment !== undefined ? word.userFragment : null);
                     console.log(`   Mapped userFragment:`, userFragment);
+                    console.log(`   Has userFragment:`, userFragment !== null);
                     const isCorrect = word.result === 'correct';
                     const isTypo = word.result === 'typo';
                     const isIncorrect = word.result === 'incorrect' || word.result === 'dont_know';
@@ -359,7 +363,7 @@ export default function ExercisePage() {
                         </div>
                         
                         {/* Показываем переводы */}
-                        {userFragment && (
+                        {userFragment !== null && userFragment !== undefined && (
                           <div className="mt-2 space-y-1">
                             <div className="text-sm">
                               <span className="text-gray-500">Ваш перевод: </span>
@@ -367,7 +371,7 @@ export default function ExercisePage() {
                                 isCorrect ? 'text-green-600' :
                                 isTypo ? 'text-amber-600' : 'text-red-500'
                               }`}>
-                                {userFragment}
+                                {userFragment || '—'}
                               </span>
                             </div>
                             {!isCorrect && (

@@ -196,6 +196,30 @@ async def change_profile_dictionary(
     }
 
 
+@router.get("/profile")
+async def get_profile(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current user's learning profile."""
+    result = await db.execute(
+        select(LearningProfile).where(LearningProfile.user_id == user.id)
+    )
+    profile = result.scalar_one_or_none()
+    
+    if not profile:
+        raise HTTPException(status_code=404, detail="Learning profile not found")
+    
+    return {
+        "user_id": profile.user_id,
+        "level": profile.level,
+        "dictionary_id": profile.dictionary_id,
+        "daily_lesson_limit": profile.daily_lesson_limit,
+        "words_per_lesson": profile.words_per_lesson,
+        "last_lesson_number": profile.last_lesson_number,
+    }
+
+
 @router.get("/profile/current")
 async def get_current_dictionary(
     user: User = Depends(get_current_user),

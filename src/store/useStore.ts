@@ -72,6 +72,8 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       // Get current user info
       const user = await api.auth.me();
+      console.log('🔑 initialize: User loaded:', user);
+      
       set({ 
         isAuthenticated: true,
         user: {
@@ -81,6 +83,28 @@ export const useStore = create<AppState>((set, get) => ({
           isOnboarded: user.is_onboarded,
         }
       });
+      
+      // Load profile if user is onboarded
+      if (user.is_onboarded) {
+        console.log('🔑 initialize: User is onboarded, loading profile...');
+        try {
+          const profileData = await api.dictionaries.getProfile();
+          console.log('🔑 initialize: Profile loaded:', profileData);
+          set({
+            profile: {
+              userId: String(profileData.user_id),
+              level: profileData.level as any,
+              dictionaryId: profileData.dictionary_id,
+              dailyLessonLimit: profileData.daily_lesson_limit,
+              wordsPerLesson: profileData.words_per_lesson,
+              lastLessonNumber: profileData.last_lesson_number,
+              userWords: [], // Will be loaded separately if needed
+            }
+          });
+        } catch (profileError) {
+          console.error('❌ initialize: Failed to load profile:', profileError);
+        }
+      }
     } catch (error: any) {
       if (error.status === 401) {
         localStorage.removeItem('access_token');

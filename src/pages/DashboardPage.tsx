@@ -6,7 +6,7 @@ import { DashboardSummary } from '../types';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { logout } = useStore();
+  const { logout, profile } = useStore();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -148,7 +148,7 @@ export default function DashboardPage() {
               <span className="text-xs text-gray-500">Сегодня</span>
             </div>
             <div className="text-2xl font-bold text-gray-800">
-              {summary.lessonsToday}/5
+              {summary.lessonsToday}/{profile?.dailyLessonLimit || 5}
             </div>
           </div>
         </div>

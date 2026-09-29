@@ -261,6 +261,16 @@ export const api = {
     get: (id: number) =>
       request<any>(`/dictionaries/${id}`),
 
+    getProfile: () =>
+      request<{
+        user_id: number;
+        level: string;
+        dictionary_id: number | null;
+        daily_lesson_limit: number;
+        words_per_lesson: number;
+        last_lesson_number: number;
+      }>('/dictionaries/profile'),
+
     getCurrent: () =>
       request<{ dictionary: any | null; message?: string }>('/dictionaries/profile/current'),
 
