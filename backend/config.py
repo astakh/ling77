@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from pydantic import field_validator
+from typing import Optional, Union
+import json
 
 
 class Settings(BaseSettings):
@@ -21,8 +23,8 @@ class Settings(BaseSettings):
     GIGACHAT_AUTH_URL: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
     GIGACHAT_API_URL: str = "https://gigachat.devices.sberbank.ru/api/v1"
 
-    # CORS
-    CORS_ORIGINS: list[str] = [
+    # CORS - может быть строкой (JSON) или списком
+    CORS_ORIGINS: Union[str, list[str]] = [
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
@@ -32,6 +34,18 @@ class Settings(BaseSettings):
     # Rate limits
     AUTH_RATE_LIMIT_PER_MINUTE: int = 10
 
+    @field_validator('CORS_ORIGINS', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            # Пробуем распарсить как JSON
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                # Если не JSON, пробуем разделить по запятой
+                return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
+
     class Config:
         env_file = ".env"
         case_sensitive = True
@@ -39,3 +53,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Убеждаемся что CORS_ORIGINS это список
+if isinstance(settings.CORS_ORIGINS, str):
+    settings.CORS_ORIGINS = [settings.CORS_ORIGINS]

@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting WordFlow backend...")
+    logger.info(f"📋 CORS_ORIGINS: {settings.CORS_ORIGINS}")
     yield
     logger.info("Shutting down WordFlow backend...")
 
