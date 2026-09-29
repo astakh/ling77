@@ -17,7 +17,7 @@ export default function LandingPage() {
             <BookOpen className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            WordFlow
+            Кругослов
           </h1>
           <p className="text-2xl text-gray-600 mb-4">
             Учите английские слова эффективно
@@ -130,7 +130,7 @@ export default function LandingPage() {
         {/* Benefits */}
         <div className="mb-16">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">
-            Почему WordFlow?
+            Почему Кругослов?
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="flex items-start gap-4">
@@ -201,7 +201,7 @@ export default function LandingPage() {
             Готовы начать учить слова?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Присоединяйтесь к WordFlow сегодня и улучшите свой английский
+            Присоединяйтесь к Кругослов сегодня и улучшите свой английский
           </p>
           <button
             onClick={handleRegister}
@@ -216,7 +216,7 @@ export default function LandingPage() {
       {/* Footer */}
       <div className="border-t border-gray-200 mt-16">
         <div className="max-w-6xl mx-auto px-4 py-8 text-center text-gray-500 text-sm">
-          <p>© 2026 WordFlow. Все права защищены.</p>
+          <p>© 2026 Кругослов (krugoslov.ru). Все права защищены.</p>
         </div>
       </div>
     </div>
