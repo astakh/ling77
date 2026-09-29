@@ -25,8 +25,10 @@ export default function LessonPreviewPage() {
     }
   };
 
-  const handleDecline = (wordId: string) => {
+  const handleDecline = async (wordId: string) => {
     declineWord(wordId);
+    // Автоматически перезагружаем превью чтобы показать замену
+    await loadPreview();
   };
 
   const handleStart = async () => {

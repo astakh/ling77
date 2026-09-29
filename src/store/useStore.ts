@@ -209,17 +209,20 @@ export const useStore = create<AppState>((set, get) => ({
   previewLesson: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.lesson.preview();
+      // Передаем declined words в backend чтобы получить замены
+      const declinedIds = get().declinedWords.map(id => parseInt(id));
+      const response = await api.lesson.preview(declinedIds);
       set({ isLoading: false });
-      return {
-        words: response.words.map(w => ({
-          id: String(w.id),
-          lemma: w.lemma,
-          translations: w.translations,
-          isNew: w.is_new,
-          isDue: w.is_due,
-        })),
-      };
+      
+      const words = response.words.map(w => ({
+        id: String(w.id),
+        lemma: w.lemma,
+        translations: w.translations,
+        isNew: w.is_new,
+        isDue: w.is_due,
+      }));
+      
+      return { words };
     } catch (error: any) {
       set({ error: error.detail || 'Failed to preview lesson', isLoading: false });
       throw error;
@@ -238,7 +241,9 @@ export const useStore = create<AppState>((set, get) => ({
   startLesson: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.lesson.start();
+      // Передаем declined words в backend
+      const declinedIds = get().declinedWords.map(id => parseInt(id));
+      const response = await api.lesson.start(declinedIds);
       
       // Convert API response to Lesson type
       const lesson: Lesson = {

@@ -72,6 +72,10 @@ class LessonPreviewWord(BaseModel):
     is_due: bool
 
 
+class LessonPreviewRequest(BaseModel):
+    declined_word_ids: list[int] = []
+
+
 class LessonPreviewResponse(BaseModel):
     words: list[LessonPreviewWord]
 
@@ -82,6 +86,10 @@ class DeclineWordRequest(BaseModel):
 
 class LessonStartRequest(BaseModel):
     idempotency_key: Optional[str] = None
+
+
+class LessonStartRequest(BaseModel):
+    declined_word_ids: list[int] = []
 
 
 class LessonStartResponse(BaseModel):

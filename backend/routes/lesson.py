@@ -18,8 +18,8 @@ from models import (
     Word, UserWord, Event, DictionaryWord
 )
 from schemas import (
-    LessonPreviewResponse, LessonPreviewWord, DeclineWordRequest,
-    LessonStartResponse, ExerciseResponse, ExerciseWordResponse,
+    LessonPreviewResponse, LessonPreviewWord, LessonPreviewRequest, DeclineWordRequest,
+    LessonStartRequest, LessonStartResponse, ExerciseResponse, ExerciseWordResponse,
     EvaluateRequest, EvaluateResponse, LessonSummaryResponse, DontKnowRequest
 )
 from auth import get_current_user
@@ -130,6 +130,7 @@ async def select_words_for_lesson(
 
 @router.post("/preview", response_model=LessonPreviewResponse)
 async def preview_lesson(
+    body: LessonPreviewRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -141,7 +142,9 @@ async def preview_lesson(
     if not profile:
         raise HTTPException(status_code=400, detail="No learning profile")
 
-    due_words, new_words = await select_words_for_lesson(db, profile)
+    due_words, new_words = await select_words_for_lesson(
+        db, profile, declined_word_ids=set(body.declined_word_ids)
+    )
 
     words = []
     for w in due_words + new_words:
@@ -170,6 +173,7 @@ async def decline_word(
 
 @router.post("/start", response_model=LessonStartResponse)
 async def start_lesson(
+    body: LessonStartRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     idempotency_key: Optional[str] = Header(None),
@@ -217,8 +221,10 @@ async def start_lesson(
     if lessons_today >= profile.daily_lesson_limit:
         raise HTTPException(status_code=429, detail="Daily lesson limit reached")
 
-    # Select words
-    due_words, new_words = await select_words_for_lesson(db, profile)
+    # Select words (excluding declined)
+    due_words, new_words = await select_words_for_lesson(
+        db, profile, declined_word_ids=set(body.declined_word_ids)
+    )
     all_words = due_words + new_words
 
     if not all_words:

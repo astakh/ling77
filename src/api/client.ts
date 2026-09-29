@@ -165,10 +165,13 @@ export const api = {
 
   // Lesson
   lesson: {
-    preview: () =>
+    preview: (declinedWordIds: number[] = []) =>
       request<{
         words: { id: number; lemma: string; translations: string[]; is_new: boolean; is_due: boolean }[];
-      }>('/lesson/preview', { method: 'POST' }),
+      }>('/lesson/preview', {
+        method: 'POST',
+        body: JSON.stringify({ declined_word_ids: declinedWordIds }),
+      }),
 
     declineWord: (wordId: number) =>
       request<{ status: string }>('/lesson/new-word/decline', {
@@ -176,13 +179,14 @@ export const api = {
         body: JSON.stringify({ word_id: wordId }),
       }),
 
-    start: (idempotencyKey?: string) =>
+    start: (declinedWordIds: number[] = [], idempotencyKey?: string) =>
       request<{
         lesson_id: number;
         lesson_number: number;
         exercises: any[];
       }>('/lesson/start', {
         method: 'POST',
+        body: JSON.stringify({ declined_word_ids: declinedWordIds }),
         headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
       }),
 
