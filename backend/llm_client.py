@@ -50,39 +50,88 @@ class GigaChatToken:
                 return self._token
 
     async def _refresh(self):
-        """Fetch new token from GigaChat OAuth."""
+        """
+        Fetch new token from GigaChat OAuth.
+        
+        Согласно документации: https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/post-token
+        
+        В заголовке Authorization нужно передать ключ авторизации (Authorization Key),
+        полученный при создании проекта в личном кабинете Studio.
+        
+        Authorization Key = base64(ClientID:ClientSecret) - это готовый ключ из кабинета.
+        В заголовке передаём: Basic {Authorization Key}
+        """
         import base64
         import uuid
         
         # Определяем какой вариант credentials использовать
         auth_key = None
+        auth_source = None
         
-        # Вариант 1: Готовый Authorization Key из личного кабинета
-        if settings.GIGACHAT_AUTH_KEY:
-            logger.info("🔑 Using GIGACHAT_AUTH_KEY from .env")
-            auth_key = settings.GIGACHAT_AUTH_KEY
-        # Вариант 2: Client ID + Client Secret
+        # Вариант 1: Готовый Authorization Key из личного кабинета (РЕКОМЕНДУЕТСЯ)
+        # Это уже base64(ClientID:ClientSecret) - используем как есть
+        if settings.GIGACHAT_AUTH_KEY and settings.GIGACHAT_AUTH_KEY.strip():
+            auth_key = settings.GIGACHAT_AUTH_KEY.strip()
+            auth_source = "GIGACHAT_AUTH_KEY"
+            logger.info("🔑 Using GIGACHAT_AUTH_KEY (Authorization Key from Studio)")
+            logger.info(f"   Auth Key preview: {auth_key[:30]}...")
+            logger.info(f"   Auth Key length: {len(auth_key)} chars")
+            
+            # Проверка формата: должен содержать ":" (UUID:base64)
+            if ":" not in auth_key:
+                logger.warning("⚠️  Authorization Key doesn't contain ':' - may be incorrect format")
+                logger.warning("   Expected format: UUID:base64string")
+        
+        # Вариант 2: Client ID + Client Secret (НЕ Authorization Key!)
         elif settings.GIGACHAT_CLIENT_ID and settings.GIGACHAT_CLIENT_SECRET:
-            logger.info("🔑 Using GIGACHAT_CLIENT_ID + GIGACHAT_CLIENT_SECRET from .env")
-            credentials = f"{settings.GIGACHAT_CLIENT_ID}:{settings.GIGACHAT_CLIENT_SECRET}"
+            client_id = settings.GIGACHAT_CLIENT_ID.strip()
+            client_secret = settings.GIGACHAT_CLIENT_SECRET.strip()
+            
+            logger.info("🔑 Using GIGACHAT_CLIENT_ID + GIGACHAT_CLIENT_SECRET")
+            logger.info(f"   Client ID: {client_id[:8]}... (length: {len(client_id)})")
+            logger.info(f"   Client Secret: {'SET' if client_secret else 'EMPTY'} (length: {len(client_secret)})")
+            
+            # Проверка что Client Secret не является Authorization Key
+            if ":" in client_secret and len(client_secret) > 100:
+                logger.warning("⚠️  Client Secret looks like Authorization Key (contains ':' and is long)")
+                logger.warning("   If this is Authorization Key, use GIGACHAT_AUTH_KEY instead!")
+                logger.warning("   Client Secret should be a simple secret string, not base64(UUID:base64)")
+            
+            # Кодируем ClientID:ClientSecret в base64
+            credentials = f"{client_id}:{client_secret}"
             auth_key = base64.b64encode(credentials.encode()).decode()
+            auth_source = "CLIENT_ID+SECRET"
+            
+            logger.info(f"   Encoded auth key preview: {auth_key[:30]}...")
+            logger.info(f"   Encoded auth key length: {len(auth_key)} chars")
         else:
             logger.error("❌ GigaChat credentials not configured!")
-            logger.error("   Вариант 1: Укажите GIGACHAT_AUTH_KEY в .env")
-            logger.error("   Вариант 2: Укажите GIGACHAT_CLIENT_ID и GIGACHAT_CLIENT_SECRET в .env")
+            logger.error("")
+            logger.error("📋 How to configure:")
+            logger.error("   1. Go to https://developers.sber.ru/studio")
+            logger.error("   2. Create GigaChat API project")
+            logger.error("   3. Get Authorization Key from project settings")
+            logger.error("   4. Add to backend/.env:")
+            logger.error("      GIGACHAT_AUTH_KEY=your-authorization-key")
+            logger.error("")
+            logger.error("   OR use Client ID + Client Secret (NOT Authorization Key!):")
+            logger.error("      GIGACHAT_CLIENT_ID=your-client-id")
+            logger.error("      GIGACHAT_CLIENT_SECRET=your-client-secret")
+            logger.error("")
+            logger.error(f"   Current values:")
             logger.error(f"   GIGACHAT_AUTH_KEY: {'SET' if settings.GIGACHAT_AUTH_KEY else 'NOT SET'}")
             logger.error(f"   GIGACHAT_CLIENT_ID: {settings.GIGACHAT_CLIENT_ID or 'NOT SET'}")
             logger.error(f"   GIGACHAT_CLIENT_SECRET: {'SET' if settings.GIGACHAT_CLIENT_SECRET else 'NOT SET'}")
-            raise Exception("GigaChat credentials not configured")
+            raise Exception("GigaChat credentials not configured. Check backend/.env")
         
-        # Генерируем UUIDv4 для RqUID
+        # Генерируем UUIDv4 для RqUID (обязательно по документации)
         rq_uid = str(uuid.uuid4())
         
-        logger.info(f"🔑 Requesting GigaChat token...")
+        logger.info(f"🔑 Requesting GigaChat access token...")
         logger.info(f"   URL: {settings.GIGACHAT_AUTH_URL}")
         logger.info(f"   RqUID: {rq_uid}")
-        logger.info(f"   Auth Key (first 20 chars): {auth_key[:20]}...")
-        logger.info(f"   Auth Key length: {len(auth_key)} chars")
+        logger.info(f"   Source: {auth_source}")
+        logger.info(f"   Scope: GIGACHAT_API_PERS")
         
         async with httpx.AsyncClient(verify=False) as client:
             try:
@@ -105,18 +154,35 @@ class GigaChatToken:
                 # Логируем детали ошибки если статус не 200
                 if response.status_code != 200:
                     logger.error(f"❌ GigaChat OAuth failed with status {response.status_code}")
-                    logger.error(f"   Response headers: {dict(response.headers)}")
                     try:
                         error_body = response.json()
-                        logger.error(f"   Response body: {error_body}")
+                        logger.error(f"   Error code: {error_body.get('code')}")
+                        logger.error(f"   Error message: {error_body.get('message')}")
+                        
+                        # Подсказки по частым ошибкам
+                        if error_body.get('code') == 4:
+                            logger.error("")
+                            logger.error("💡 Hint: 'Can't decode Authorization header'")
+                            logger.error("   This means Authorization Key format is wrong.")
+                            logger.error("   Check that you're using the correct credentials:")
+                            if auth_source == "CLIENT_ID+SECRET":
+                                logger.error("   - You're using Client ID + Client Secret")
+                                logger.error("   - Make sure Client Secret is NOT Authorization Key")
+                                logger.error("   - Try using GIGACHAT_AUTH_KEY instead")
+                            else:
+                                logger.error("   - You're using GIGACHAT_AUTH_KEY")
+                                logger.error("   - Make sure it's the full Authorization Key from Studio")
+                                logger.error("   - Format should be: UUID:base64string")
                     except:
                         logger.error(f"   Response text: {response.text[:500]}")
                 
                 response.raise_for_status()
                 data = response.json()
                 
-                logger.info(f"✅ GigaChat token obtained successfully")
+                logger.info(f"✅ GigaChat access token obtained successfully!")
+                logger.info(f"   Token preview: {data.get('access_token', '')[:30]}...")
                 logger.info(f"   Token expires at: {data.get('expires_at')}")
+                logger.info(f"   Token valid for 30 minutes")
                 
                 self._token = data["access_token"]
                 self._expires_at = data["expires_at"] / 1000  # ms -> seconds
