@@ -65,6 +65,7 @@ try:
     
     response = giga.chat(
         Chat(
+            model="GigaChat-3-Ultra",  # Явно указываем модель
             messages=[
                 Messages(role="user", content="Скажи 'Привет' одним словом")
             ],

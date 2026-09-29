@@ -56,6 +56,7 @@ class GigaChatClient:
                     self._giga = GigaChat(
                         credentials=settings.GIGACHAT_AUTH_KEY,
                         scope="GIGACHAT_API_PERS",
+                        model="GigaChat-3-Ultra",  # Используем GigaChat-3-Ultra
                         verify_ssl_certs=False,  # Для тестирования (в production нужен сертификат НУЦ)
                     )
                     
@@ -100,6 +101,7 @@ class GigaChatClient:
                 # Отправляем запрос через SDK
                 response = giga.chat(
                     Chat(
+                        model="GigaChat-3-Ultra",  # Явно указываем модель
                         messages=[
                             Messages(role="system", content="You are a helpful language teaching assistant. Always respond with valid JSON only, no markdown."),
                             Messages(role="user", content=prompt),
