@@ -82,7 +82,9 @@ async def select_words_for_lesson(
 
     # Sort by deterministic hash
     due_words.sort(key=lambda x: x["hash"])
-    due_words = due_words[:5]  # max 5 due words
+    # Max 60% of words_per_lesson for due words (but at least 3)
+    max_due_words = max(int(profile.words_per_lesson * 0.6), 3)
+    due_words = due_words[:max_due_words]
 
     # Get new words (not in user_words) from the selected dictionary
     existing_ids = {uw.word_id for uw, _ in all_user_words}
@@ -122,7 +124,8 @@ async def select_words_for_lesson(
         })
 
     new_words.sort(key=lambda x: x["hash"])
-    remaining = max(8 - len(due_words), 3)
+    # Fill remaining slots with new words to reach words_per_lesson
+    remaining = max(profile.words_per_lesson - len(due_words), 0)
     new_words = new_words[:remaining]
 
     return due_words, new_words
