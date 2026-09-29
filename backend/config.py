@@ -33,6 +33,9 @@ class Settings(BaseSettings):
 
     # Rate limits
     AUTH_RATE_LIMIT_PER_MINUTE: int = 10
+    
+    # Admin
+    ADMIN_PASSWORD: str = "admin123"  # Пароль для входа в админку
 
     @field_validator('CORS_ORIGINS', mode='before')
     @classmethod

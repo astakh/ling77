@@ -8,7 +8,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from config import settings as app_settings
-from routes import auth, onboarding, dashboard, lesson, vocabulary, admin, dictionaries
+from routes import auth, onboarding, dashboard, lesson, vocabulary, dictionaries
+from routes import admin as admin_router
 from routes import settings as settings_router
 
 # Configure logging
@@ -86,7 +87,7 @@ app.include_router(lesson.router)
 app.include_router(vocabulary.router)
 app.include_router(dictionaries.router)
 app.include_router(settings_router.router)
-app.include_router(admin.router)
+app.include_router(admin_router.router)
 
 
 @app.get("/health")

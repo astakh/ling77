@@ -1,142 +1,224 @@
-from fastapi import APIRouter, Depends, HTTPException
+"""
+Admin routes for dictionary management
+"""
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, delete
+from pydantic import BaseModel
+from typing import Optional
 
-from database import get_db
-from models import User, Dictionary, Word, Lesson, LearningProfile, DictionaryWord
-from schemas import DictionaryImportRequest, DictionaryImportResponse
-from auth import get_current_admin
+from database import get_db, async_session_factory
+from models import Dictionary, Word, DictionaryWord
+from config import settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-@router.post("/dictionaries/import", response_model=DictionaryImportResponse)
-async def import_dictionary(
-    body: DictionaryImportRequest,
-    admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Import words into a dictionary.
-    Supports dry_run mode and batch upsert up to 1000 rows.
-    """
-    if len(body.words) > 1000:
-        raise HTTPException(status_code=400, detail="Max 1000 words per batch")
+class AdminLoginRequest(BaseModel):
+    password: str
 
-    # Check dictionary exists
-    result = await db.execute(select(Dictionary).where(Dictionary.id == body.dictionary_id))
-    dictionary = result.scalar_one_or_none()
-    if not dictionary:
-        raise HTTPException(status_code=404, detail="Dictionary not found")
 
-    created = 0
-    updated = 0
-    errors = []
+class AdminLoginResponse(BaseModel):
+    success: bool
+    token: Optional[str] = None
 
-    for word_data in body.words:
-        try:
-            lemma = word_data.get("lemma", "").strip()
-            pos = word_data.get("pos", "").strip()
-            level = word_data.get("level", "").strip()
-            translations = word_data.get("translations", [])
 
-            if not lemma or not pos or not level:
-                errors.append(f"Missing required fields: {word_data}")
-                continue
+class DictionaryListResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    category: str
+    words_count: int
 
-            # Calculate lemma_key
-            import unicodedata
-            lemma_key = unicodedata.normalize("NFC", lemma).casefold().strip()
 
-            # Check if word exists (globally by lemma_key + pos)
-            result = await db.execute(
-                select(Word).where(
-                    Word.lemma_key == lemma_key,
-                    Word.pos == pos,
+class DictionaryDetailResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    category: str
+
+
+class WordInDictionaryResponse(BaseModel):
+    id: int
+    lemma: str
+    pos: str
+    level: str
+    translations: list[str]
+
+
+class DictionaryUpdateRequest(BaseModel):
+    name: str
+    description: Optional[str]
+    category: str
+
+
+# Простая проверка админского токена
+def verify_admin_token(token: str) -> bool:
+    """Проверяет валидность админского токена"""
+    return token == "admin_token_" + settings.ADMIN_PASSWORD
+
+
+@router.post("/login", response_model=AdminLoginResponse)
+async def admin_login(request: AdminLoginRequest):
+    """Вход в админку по паролю"""
+    if request.password == settings.ADMIN_PASSWORD:
+        token = "admin_token_" + settings.ADMIN_PASSWORD
+        return AdminLoginResponse(success=True, token=token)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный пароль"
+        )
+
+
+@router.get("/dictionaries", response_model=list[DictionaryListResponse])
+async def get_dictionaries():
+    """Получить список всех словарей с количеством слов"""
+    async with async_session_factory() as session:
+        # Получаем все словари
+        result = await session.execute(
+            select(Dictionary).order_by(Dictionary.id)
+        )
+        dictionaries = result.scalars().all()
+        
+        # Для каждого словаря считаем количество слов
+        response = []
+        for dict_item in dictionaries:
+            count_result = await session.execute(
+                select(DictionaryWord).where(
+                    DictionaryWord.dictionary_id == dict_item.id
                 )
             )
-            existing_word = result.scalar_one_or_none()
-
-            if existing_word:
-                # Word exists - check if it's already in this dictionary
-                link_result = await db.execute(
-                    select(DictionaryWord).where(
-                        DictionaryWord.dictionary_id == body.dictionary_id,
-                        DictionaryWord.word_id == existing_word.id,
-                    )
-                )
-                existing_link = link_result.scalar_one_or_none()
-                
-                if existing_link:
-                    # Already linked - update word data
-                    if not body.dry_run:
-                        existing_word.lemma = lemma
-                        existing_word.translations = translations
-                        existing_word.level = level
-                    updated += 1
-                else:
-                    # Word exists but not in this dictionary - add link
-                    if not body.dry_run:
-                        link = DictionaryWord(
-                            dictionary_id=body.dictionary_id,
-                            word_id=existing_word.id,
-                        )
-                        db.add(link)
-                    updated += 1
-            else:
-                # New word - create it and link to dictionary
-                if not body.dry_run:
-                    word = Word(
-                        lemma=lemma,
-                        lemma_key=lemma_key,
-                        pos=pos,
-                        level=level,
-                        translations=translations,
-                    )
-                    db.add(word)
-                    await db.flush()  # Get word.id
-                    
-                    link = DictionaryWord(
-                        dictionary_id=body.dictionary_id,
-                        word_id=word.id,
-                    )
-                    db.add(link)
-                created += 1
-
-        except Exception as e:
-            errors.append(f"Error processing {word_data}: {str(e)}")
-
-    if not body.dry_run:
-        await db.flush()
-
-    return DictionaryImportResponse(
-        total=len(body.words),
-        created=created,
-        updated=updated,
-        errors=errors,
-    )
+            words_count = len(count_result.scalars().all())
+            
+            response.append(DictionaryListResponse(
+                id=dict_item.id,
+                name=dict_item.name,
+                description=dict_item.description,
+                category=dict_item.category,
+                words_count=words_count
+            ))
+        
+        return response
 
 
-@router.get("/reports/summary")
-async def get_admin_report(
-    admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get admin summary report."""
-    # Total users
-    result = await db.execute(select(func.count(User.id)))
-    total_users = result.scalar() or 0
+@router.get("/dictionaries/{dictionary_id}", response_model=DictionaryDetailResponse)
+async def get_dictionary(dictionary_id: int):
+    """Получить информацию о словаре"""
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(Dictionary).where(Dictionary.id == dictionary_id)
+        )
+        dictionary = result.scalar_one_or_none()
+        
+        if not dictionary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Словарь не найден"
+            )
+        
+        return DictionaryDetailResponse(
+            id=dictionary.id,
+            name=dictionary.name,
+            description=dictionary.description,
+            category=dictionary.category
+        )
 
-    # Total lessons
-    result = await db.execute(select(func.count(Lesson.id)))
-    total_lessons = result.scalar() or 0
 
-    # Active profiles
-    result = await db.execute(select(func.count(LearningProfile.id)))
-    total_profiles = result.scalar() or 0
+@router.get("/dictionaries/{dictionary_id}/words", response_model=list[WordInDictionaryResponse])
+async def get_dictionary_words(dictionary_id: int):
+    """Получить все слова в словаре"""
+    async with async_session_factory() as session:
+        # Проверяем существование словаря
+        dict_result = await session.execute(
+            select(Dictionary).where(Dictionary.id == dictionary_id)
+        )
+        if not dict_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Словарь не найден"
+            )
+        
+        # Получаем все слова из словаря
+        result = await session.execute(
+            select(Word)
+            .join(DictionaryWord, DictionaryWord.word_id == Word.id)
+            .where(DictionaryWord.dictionary_id == dictionary_id)
+            .order_by(Word.lemma)
+        )
+        words = result.scalars().all()
+        
+        return [
+            WordInDictionaryResponse(
+                id=word.id,
+                lemma=word.lemma,
+                pos=word.pos,
+                level=word.level,
+                translations=word.translations
+            )
+            for word in words
+        ]
 
-    return {
-        "total_users": total_users,
-        "total_lessons": total_lessons,
-        "total_profiles": total_profiles,
-    }
+
+@router.delete("/dictionaries/{dictionary_id}")
+async def delete_dictionary(dictionary_id: int):
+    """Удалить словарь и все связи с словами"""
+    async with async_session_factory() as session:
+        # Проверяем существование словаря
+        result = await session.execute(
+            select(Dictionary).where(Dictionary.id == dictionary_id)
+        )
+        dictionary = result.scalar_one_or_none()
+        
+        if not dictionary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Словарь не найден"
+            )
+        
+        # Удаляем все связи с словами
+        await session.execute(
+            delete(DictionaryWord).where(
+                DictionaryWord.dictionary_id == dictionary_id
+            )
+        )
+        
+        # Удаляем словарь
+        await session.execute(
+            delete(Dictionary).where(Dictionary.id == dictionary_id)
+        )
+        
+        await session.commit()
+        
+        return {"success": True, "message": "Словарь удален"}
+
+
+@router.put("/dictionaries/{dictionary_id}", response_model=DictionaryDetailResponse)
+async def update_dictionary(dictionary_id: int, request: DictionaryUpdateRequest):
+    """Обновить информацию о словаре"""
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(Dictionary).where(Dictionary.id == dictionary_id)
+        )
+        dictionary = result.scalar_one_or_none()
+        
+        if not dictionary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Словарь не найден"
+            )
+        
+        # Обновляем поля
+        dictionary.name = request.name
+        dictionary.description = request.description
+        dictionary.category = request.category
+        
+        await session.commit()
+        await session.refresh(dictionary)
+        
+        return DictionaryDetailResponse(
+            id=dictionary.id,
+            name=dictionary.name,
+            description=dictionary.description,
+            category=dictionary.category
+        )

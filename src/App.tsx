@@ -10,6 +10,9 @@ import LessonSummaryPage from './pages/LessonSummaryPage';
 import VocabularyPage from './pages/VocabularyPage';
 import DictionariesPage from './pages/DictionariesPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import AdminDictionariesPage from './pages/AdminDictionariesPage';
+import AdminDictionaryWordsPage from './pages/AdminDictionaryWordsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useStore();
@@ -96,6 +99,12 @@ function App() {
             <SettingsPage />
           </ProtectedRoute>
         } />
+        
+        {/* Admin routes */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/dictionaries" element={<AdminDictionariesPage />} />
+        <Route path="/admin/dictionaries/:dictionaryId" element={<AdminDictionaryWordsPage />} />
+        
         <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/auth"} replace />} />
       </Routes>
     </HashRouter>

@@ -298,6 +298,79 @@ export const api = {
         body: JSON.stringify(settings),
       }),
   },
+
+  // Admin
+  admin: {
+    login: (password: string) =>
+      request<{ success: boolean; token: string }>('/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      }),
+
+    getDictionaries: () =>
+      request<Array<{
+        id: number;
+        name: string;
+        description: string | null;
+        category: string;
+        words_count: number;
+      }>>('/admin/dictionaries', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+        },
+      }),
+
+    getDictionary: (id: number) =>
+      request<{
+        id: number;
+        name: string;
+        description: string | null;
+        category: string;
+      }>(`/admin/dictionaries/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+        },
+      }),
+
+    getDictionaryWords: (id: number) =>
+      request<Array<{
+        id: number;
+        lemma: string;
+        pos: string;
+        level: string;
+        translations: string[];
+      }>>(`/admin/dictionaries/${id}/words`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+        },
+      }),
+
+    deleteDictionary: (id: number) =>
+      request<{ success: boolean; message: string }>(`/admin/dictionaries/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+        },
+      }),
+
+    updateDictionary: (id: number, data: {
+      name: string;
+      description: string | null;
+      category: string;
+    }) =>
+      request<{
+        id: number;
+        name: string;
+        description: string | null;
+        category: string;
+      }>(`/admin/dictionaries/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+        },
+      }),
+  },
 };
 
 export { ApiError };
