@@ -17,12 +17,29 @@ export default function ExercisePage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [resultData, setResultData] = useState<any>(null);
 
-  // Redirect if no lesson
+  // Load current lesson if not in store
   useEffect(() => {
-    if (!currentLesson || currentLesson.status !== 'in_progress') {
-      navigate('/dashboard');
-    }
-  }, [currentLesson, navigate]);
+    const loadLesson = async () => {
+      console.log('🔍 ExercisePage: checking current lesson...');
+      console.log('   currentLesson:', currentLesson);
+      
+      if (!currentLesson || currentLesson.status !== 'in_progress') {
+        console.log('   No lesson in store, loading from backend...');
+        const lesson = await useStore.getState().loadCurrentLesson();
+        
+        if (!lesson) {
+          console.log('   No lesson found, redirecting to dashboard');
+          navigate('/dashboard');
+        } else {
+          console.log('   Lesson loaded successfully');
+        }
+      } else {
+        console.log('   Lesson found in store');
+      }
+    };
+    
+    loadLesson();
+  }, []);
 
   // Block navigation
   useEffect(() => {

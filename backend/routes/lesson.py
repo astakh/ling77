@@ -609,6 +609,84 @@ async def get_lesson_summary(
     )
 
 
+@router.get("/current")
+async def get_current_lesson(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current in-progress lesson for the user."""
+    logger.info(f"🔍 Getting current lesson for user {user.id}")
+    
+    result = await db.execute(
+        select(Lesson, LearningProfile)
+        .join(LearningProfile, Lesson.learning_profile_id == LearningProfile.id)
+        .where(
+            LearningProfile.user_id == user.id,
+            Lesson.status == "in_progress",
+        )
+    )
+    row = result.one_or_none()
+    
+    if not row:
+        logger.info(f"   ❌ No in-progress lesson found for user {user.id}")
+        return {"lesson": None}
+    
+    lesson, _ = row
+    logger.info(f"   ✅ Found lesson #{lesson.lesson_number} (id={lesson.id}, status={lesson.status})")
+    
+    # Load exercises
+    result = await db.execute(
+        select(LessonExercise)
+        .where(LessonExercise.lesson_id == lesson.id)
+        .order_by(LessonExercise.order_index)
+    )
+    exercises = result.scalars().all()
+    
+    exercises_data = []
+    for ex in exercises:
+        # Load exercise words
+        result = await db.execute(
+            select(LessonExerciseWord)
+            .where(LessonExerciseWord.exercise_id == ex.id)
+        )
+        words = result.scalars().all()
+        
+        exercises_data.append({
+            "id": ex.id,
+            "order_index": ex.order_index,
+            "target_sentence": ex.target_sentence,
+            "reference_translation": ex.reference_translation,
+            "user_translation": ex.user_translation,
+            "status": ex.status,
+            "words": [
+                {
+                    "word_id": w.word_id,
+                    "is_target": w.is_target,
+                    "is_new": w.is_new,
+                    "surface_form": w.surface_form,
+                    "result": w.result,
+                    "user_fragment": w.user_fragment,
+                    "stage_before": w.stage_before,
+                    "stage_after": w.stage_after,
+                }
+                for w in words
+            ]
+        })
+    
+    logger.info(f"   Loaded {len(exercises_data)} exercises")
+    
+    return {
+        "lesson": {
+            "id": lesson.id,
+            "lesson_number": lesson.lesson_number,
+            "status": lesson.status,
+            "started_local_date": lesson.started_local_date,
+            "completed_local_date": lesson.completed_local_date,
+            "exercises": exercises_data,
+        }
+    }
+
+
 @router.post("/{lesson_id}/abandon")
 async def abandon_lesson(
     lesson_id: int,

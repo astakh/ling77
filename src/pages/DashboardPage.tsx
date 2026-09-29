@@ -26,10 +26,16 @@ export default function DashboardPage() {
   };
 
   const handleCTA = () => {
+    console.log('🎯 Dashboard CTA clicked');
+    console.log('   summary:', summary);
+    
     if (!summary) return;
+    
     if (summary.cta === 'resume' && summary.currentLessonId) {
+      console.log(`   Resuming lesson #${summary.currentLessonId}`);
       navigate('/lesson/exercise');
     } else if (summary.cta === 'start') {
+      console.log('   Starting new lesson');
       navigate('/lesson/preview');
     }
   };

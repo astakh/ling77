@@ -34,6 +34,7 @@ interface AppState {
   completeOnboarding: (timezone: string, level: Level, dictionaryId?: number | null) => Promise<void>;
   getDashboardSummary: () => Promise<DashboardSummary>;
   startLesson: () => Promise<Lesson>;
+  loadCurrentLesson: () => Promise<Lesson | null>;
   previewLesson: () => Promise<{ words: { id: string; lemma: string; translations: string[]; isNew: boolean; isDue: boolean }[] }>;
   declineWord: (wordId: string) => void;
   submitExerciseTranslation: (translation: string) => void;
@@ -284,6 +285,67 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (error: any) {
       set({ error: error.detail || 'Failed to start lesson', isLoading: false });
       throw error;
+    }
+  },
+
+  loadCurrentLesson: async () => {
+    console.log('📥 Loading current lesson from backend...');
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.lesson.getCurrent();
+      
+      if (!response.lesson) {
+        console.log('   No current lesson found');
+        set({ isLoading: false });
+        return null;
+      }
+      
+      console.log(`   Found lesson #${response.lesson.lesson_number} with ${response.lesson.exercises.length} exercises`);
+      
+      // Convert API response to Lesson type
+      const lesson: Lesson = {
+        id: String(response.lesson.id),
+        lessonNumber: response.lesson.lesson_number,
+        status: response.lesson.status as any,
+        startedLocalDate: response.lesson.started_local_date,
+        completedLocalDate: response.lesson.completed_local_date,
+        exercises: response.lesson.exercises.map((ex: any) => ({
+          id: String(ex.id),
+          orderIndex: ex.order_index,
+          targetSentence: ex.target_sentence,
+          referenceTranslation: ex.reference_translation,
+          userTranslation: ex.user_translation || '',
+          status: ex.status,
+          words: ex.words.map((w: any) => ({
+            wordId: String(w.word_id),
+            isTarget: w.is_target,
+            isNew: w.is_new,
+            surfaceForm: w.surface_form,
+            result: w.result || 'pending',
+            userFragment: w.user_fragment || '',
+            stageBefore: w.stage_before,
+            stageAfter: w.stage_after,
+          })),
+        })),
+      };
+
+      // Find first pending exercise
+      const firstPendingIndex = lesson.exercises.findIndex(ex => ex.status === 'pending');
+      const exerciseIndex = firstPendingIndex >= 0 ? firstPendingIndex : 0;
+      
+      console.log(`   Resuming from exercise ${exerciseIndex + 1}`);
+
+      set({
+        currentLesson: lesson,
+        currentExerciseIndex: exerciseIndex,
+        isLoading: false,
+      });
+
+      return lesson;
+    } catch (error: any) {
+      console.error('   Failed to load current lesson:', error);
+      set({ error: error.detail || 'Failed to load current lesson', isLoading: false });
+      return null;
     }
   },
 

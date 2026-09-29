@@ -190,6 +190,18 @@ export const api = {
         headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
       }),
 
+    getCurrent: () =>
+      request<{
+        lesson: {
+          id: number;
+          lesson_number: number;
+          status: string;
+          started_local_date: string;
+          completed_local_date: string | null;
+          exercises: any[];
+        } | null;
+      }>('/lesson/current'),
+
     evaluate: (exerciseId: number, userTranslation: string, idempotencyKey?: string) =>
       request<{
         exercise_id: number;
