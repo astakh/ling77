@@ -56,7 +56,7 @@ class GigaChatClient:
                     self._giga = GigaChat(
                         credentials=settings.GIGACHAT_AUTH_KEY,
                         scope="GIGACHAT_API_PERS",
-                        verify_certs=False,  # Для тестирования (в production нужен сертификат НУЦ)
+                        verify_ssl_certs=False,  # Для тестирования (в production нужен сертификат НУЦ)
                     )
                     
                     logger.info("✅ GigaChat SDK initialized successfully")
@@ -94,24 +94,41 @@ class GigaChatClient:
                 logger.info(f"   Temperature: {temperature}")
                 logger.info(f"   Prompt length: {len(prompt)} chars")
                 
+                # Импортируем модели SDK
+                from gigachat.models import Chat, Messages
+                
                 # Отправляем запрос через SDK
                 response = giga.chat(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a helpful language teaching assistant. Always respond with valid JSON only, no markdown.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=temperature,
-                    max_tokens=2000,
+                    Chat(
+                        messages=[
+                            Messages(role="system", content="You are a helpful language teaching assistant. Always respond with valid JSON only, no markdown."),
+                            Messages(role="user", content=prompt),
+                        ],
+                        temperature=temperature,
+                        max_tokens=2000,
+                    )
                 )
 
                 latency_ms = int((time.time() - start_time) * 1000)
                 
+                # Логируем структуру ответа для отладки
+                logger.info(f"📊 Response received")
+                logger.info(f"   Response type: {type(response).__name__}")
+                
                 # Извлекаем контент из ответа
-                content = response.choices[0].message.content
-                tokens = response.usage.total_tokens if response.usage else None
+                try:
+                    if hasattr(response, 'choices') and len(response.choices) > 0:
+                        content = response.choices[0].message.content
+                        logger.info(f"   Content length: {len(content)} chars")
+                    else:
+                        raise ValueError("Response has no choices")
+                    
+                    tokens = response.usage.total_tokens if hasattr(response, 'usage') and response.usage else None
+                    logger.info(f"   Tokens: {tokens}")
+                except Exception as e:
+                    logger.error(f"❌ Failed to parse response: {e}")
+                    logger.error(f"   Response: {response}")
+                    raise
 
                 logger.info(f"✅ GigaChat response received")
                 logger.info(f"   Latency: {latency_ms}ms")

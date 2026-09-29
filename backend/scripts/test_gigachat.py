@@ -61,18 +61,22 @@ except Exception as e:
 # Проверка 5: Тестовый запрос
 print("\n5️⃣  Тестовый запрос к API...")
 try:
+    from gigachat.models import Chat, Messages
+    
     response = giga.chat(
-        messages=[
-            {"role": "user", "content": "Скажи 'Привет' одним словом"}
-        ],
-        temperature=0.1,
-        max_tokens=10,
+        Chat(
+            messages=[
+                Messages(role="user", content="Скажи 'Привет' одним словом")
+            ],
+            temperature=0.1,
+            max_tokens=10,
+        )
     )
     
     content = response.choices[0].message.content
     print(f"   ✅ Ответ получен: {content}")
     
-    if response.usage:
+    if hasattr(response, 'usage') and response.usage:
         print(f"   Tokens used: {response.usage.total_tokens}")
     
     print("\n" + "=" * 60)
