@@ -342,9 +342,13 @@ export default function ExercisePage() {
                       : (word.userFragment !== undefined ? word.userFragment : null);
                     console.log(`   Mapped userFragment:`, userFragment);
                     console.log(`   Has userFragment:`, userFragment !== null);
+                    console.log(`   userFragment type:`, typeof userFragment);
+                    console.log(`   userFragment value:`, JSON.stringify(userFragment));
                     const isCorrect = word.result === 'correct';
                     const isTypo = word.result === 'typo';
                     const isIncorrect = word.result === 'incorrect' || word.result === 'dont_know';
+                    console.log(`   isCorrect:`, isCorrect, `isTypo:`, isTypo, `isIncorrect:`, isIncorrect);
+                    console.log(`   Should render translation block:`, userFragment !== null && userFragment !== undefined);
                     
                     return (
                       <div key={idx} className="border-b border-gray-100 last:border-b-0 pb-3 last:pb-0">
@@ -363,27 +367,44 @@ export default function ExercisePage() {
                         </div>
                         
                         {/* Показываем переводы */}
-                        {userFragment !== null && userFragment !== undefined && (
-                          <div className="mt-2 space-y-1">
-                            <div className="text-sm">
-                              <span className="text-gray-500">Ваш перевод: </span>
-                              <span className={`font-medium ${
-                                isCorrect ? 'text-green-600' :
-                                isTypo ? 'text-amber-600' : 'text-red-500'
-                              }`}>
-                                {userFragment || '—'}
-                              </span>
-                            </div>
-                            {!isCorrect && (
+                        {(() => {
+                          const shouldRender = userFragment !== null && userFragment !== undefined;
+                          console.log(`   📝 Rendering translation block for word ${idx}:`, {
+                            shouldRender,
+                            userFragment,
+                            isCorrect,
+                            isTypo,
+                            isIncorrect
+                          });
+                          
+                          if (!shouldRender) {
+                            console.log(`   ❌ Skipping translation block for word ${idx}`);
+                            return null;
+                          }
+                          
+                          console.log(`   ✅ Rendering translation block for word ${idx}`);
+                          return (
+                            <div className="mt-2 space-y-1">
                               <div className="text-sm">
-                                <span className="text-gray-500">Правильный перевод: </span>
-                                <span className="font-medium text-green-600">
-                                  {word.translation || '—'}
+                                <span className="text-gray-500">Ваш перевод: </span>
+                                <span className={`font-medium ${
+                                  isCorrect ? 'text-green-600' :
+                                  isTypo ? 'text-amber-600' : 'text-red-500'
+                                }`}>
+                                  {userFragment || '—'}
                                 </span>
                               </div>
-                            )}
-                          </div>
-                        )}
+                              {!isCorrect && (
+                                <div className="text-sm">
+                                  <span className="text-gray-500">Правильный перевод: </span>
+                                  <span className="font-medium text-green-600">
+                                    {word.translation || '—'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
