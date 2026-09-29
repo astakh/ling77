@@ -168,17 +168,9 @@ export default function ExercisePage() {
 
         {!showResult ? (
           <div className="animate-fade-in flex flex-col flex-1">
-            {/* Sentence */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm mb-4 animate-slide-up">
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Переведите предложение</p>
-              <p className="text-lg font-medium text-gray-800 leading-relaxed">
-                {exercise.targetSentence}
-              </p>
-            </div>
-
             {/* Target words */}
-            <div className="bg-indigo-50 rounded-xl p-4 mb-6 border border-indigo-100">
-              <p className="text-xs text-indigo-600 uppercase tracking-wide mb-2 font-medium">Слова для перевода</p>
+            <div className="bg-indigo-50 rounded-xl p-4 mb-4 border border-indigo-100 animate-slide-up">
+              <p className="text-xs text-indigo-600 uppercase tracking-wide mb-2 font-medium">Слова в упражнении</p>
               <div className="flex flex-wrap gap-2">
                 {exercise.words
                   .filter(w => w.isTarget)
@@ -191,6 +183,14 @@ export default function ExercisePage() {
                     </span>
                   ))}
               </div>
+            </div>
+
+            {/* Sentence */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm mb-6 animate-slide-up">
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Переведите предложение</p>
+              <p className="text-lg font-medium text-gray-800 leading-relaxed">
+                {exercise.targetSentence}
+              </p>
             </div>
 
             {/* Input */}
