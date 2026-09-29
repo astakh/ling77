@@ -345,7 +345,7 @@ export default function ExercisePage() {
                     return (
                       <div key={idx} className="border-b border-gray-100 last:border-b-0 pb-3 last:pb-0">
                         {/* Строка 1: слово - статус */}
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
                           <span className="font-semibold text-gray-800 text-base">{word.surface_form || word.surfaceForm}</span>
                           <span className={`text-sm font-medium ${
                             isCorrect ? 'text-green-600' :

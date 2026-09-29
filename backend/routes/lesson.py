@@ -576,13 +576,48 @@ async def evaluate_exercise(
 
     await db.flush()
 
+    # Filter new_suggested_words
+    filtered_new_suggested_words = []
+    if 'new_suggested_words' in locals() and new_suggested_words:
+        # Get user's existing words
+        result = await db.execute(
+            select(UserWord.word_id)
+            .join(Word, UserWord.word_id == Word.id)
+            .where(UserWord.learning_profile_id == profile.id)
+        )
+        user_word_ids = set(result.scalars().all())
+        
+        # Get lemmas of user's words
+        result = await db.execute(
+            select(Word.lemma)
+            .where(Word.id.in_(user_word_ids))
+        )
+        user_word_lemmas = set(result.scalars().all())
+        
+        for word_obj in new_suggested_words:
+            word_lemma = word_obj.get('word', '').lower().strip()
+            
+            # Filter 1: Skip phrases (words with spaces)
+            if ' ' in word_lemma:
+                logger.info(f"   🚫 Skipping phrase: '{word_lemma}'")
+                continue
+            
+            # Filter 2: Skip words already in user's vocabulary
+            if word_lemma in user_word_lemmas:
+                logger.info(f"   🚫 Skipping already learned word: '{word_lemma}'")
+                continue
+            
+            filtered_new_suggested_words.append(word_obj)
+        
+        logger.info(f"📊 Filtered new_suggested_words: {len(new_suggested_words)} → {len(filtered_new_suggested_words)}")
+
     return EvaluateResponse(
         exercise_id=exercise.id,
         result=overall_result,
         words=exercise_words_response,
         reference_translation=exercise.reference_translation,
         is_last=is_last,
-        new_suggested_words=new_suggested_words if 'new_suggested_words' in locals() else [],
+        new_suggested_words=filtered_new_suggested_words,
     )
 
 
