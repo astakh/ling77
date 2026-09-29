@@ -41,6 +41,7 @@ interface AppState {
   evaluateExercise: (exerciseId: number, translation: string) => Promise<{ result: string; words: any[]; isLast: boolean; referenceTranslation: string; newSuggestedWords: Array<{ word: string; translation: string }> }>;
   nextExercise: () => void;
   completeLesson: () => Promise<void>;
+  clearCurrentLesson: () => void;
   abandonLesson: () => Promise<void>;
   setExerciseDraft: (draft: string) => void;
   updateWordStatus: (userWordId: number, status: WordStatus) => Promise<void>;
@@ -382,6 +383,12 @@ export const useStore = create<AppState>((set, get) => ({
 
   completeLesson: async () => {
     // Lesson is auto-completed by backend when last exercise is evaluated
+    // Don't clear currentLesson here - it's needed for the summary page
+    // The summary page will handle cleanup
+    set({ currentExerciseIndex: 0 });
+  },
+
+  clearCurrentLesson: () => {
     set({ currentLesson: null, currentExerciseIndex: 0 });
   },
 

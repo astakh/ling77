@@ -1,13 +1,24 @@
 import { useStore } from '../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, ArrowRight, Flame, Star } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function LessonSummaryPage() {
   const navigate = useNavigate();
-  const { currentLesson, streak } = useStore();
+  const { currentLesson, streak, clearCurrentLesson } = useStore();
+
+  useEffect(() => {
+    if (!currentLesson || currentLesson.status !== 'completed') {
+      navigate('/dashboard');
+    }
+  }, [currentLesson, navigate]);
+
+  const handleGoToDashboard = () => {
+    clearCurrentLesson();
+    navigate('/dashboard');
+  };
 
   if (!currentLesson || currentLesson.status !== 'completed') {
-    navigate('/dashboard');
     return null;
   }
 
@@ -94,7 +105,7 @@ export default function LessonSummaryPage() {
         </div>
 
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={handleGoToDashboard}
           className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
         >
           На главную

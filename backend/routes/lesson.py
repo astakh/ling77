@@ -396,6 +396,7 @@ async def evaluate_exercise(
                     surface_form=ew.surface_form,
                     translation=words_map[ew.word_id].translations[0] if ew.word_id in words_map and words_map[ew.word_id].translations else None,
                     result=ew.result,
+                    user_fragment=ew.user_fragment,
                     stage_before=ew.stage_before,
                     stage_after=ew.stage_after,
                 )
