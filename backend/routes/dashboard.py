@@ -14,9 +14,12 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 def get_local_date(timezone_str: str) -> str:
     """Get current date in user's timezone."""
-    # Simplified — in production use pytz or zoneinfo
     from zoneinfo import ZoneInfo
-    tz = ZoneInfo(timezone_str)
+    try:
+        tz = ZoneInfo(timezone_str)
+    except Exception:
+        # Fallback to UTC if timezone not found
+        tz = ZoneInfo("UTC")
     return datetime.now(tz).strftime("%Y-%m-%d")
 
 
